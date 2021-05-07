@@ -18,42 +18,42 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/recorder")
 public class RecorderController {
 
-    //those are very temporary until channels are implemented
-    String url = "http://raspberrypi:9981/stream/channel/6c34f91f6b869329a19e35ef03c9d47a";
     String filename = "./aa.mp4";
 
     @Autowired
     RecorderManager manager;
     @Value("${recording.defaultRecordingTimeInMinutes}")
     int defaultRecordingTime;
+    @Value("${tvheadened.url}")
+    String tvhBaseURL;
 
-    @GetMapping("/record")
-    public ResponseEntity<Void> record() {
+    @GetMapping("/record/channel/{channel}")
+    public ResponseEntity<Void> record(@PathVariable("channel") String channel) {
         var start = LocalDateTime.now();
         var end = start.plus(Duration.ofMinutes(defaultRecordingTime));
-        var recordingOrder = new RecordingOrder(url, filename, start, end);
+        var recordingOrder = new RecordingOrder(fullURL(channel), filename, start, end);
 
         manager.record(recordingOrder);
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    @GetMapping("/record/seconds/{time}")
-    public ResponseEntity<Void> record1(@PathVariable("time") int time) {
+    @GetMapping("/record/channel/{channel}/seconds/{time}")
+    public ResponseEntity<Void> record1(@PathVariable("channel") String channel, @PathVariable("time") int time) {
         var start = LocalDateTime.now();
         var end = start.plus(Duration.ofSeconds(time));
-        var recordingOrder = new RecordingOrder(url, filename, start, end);
+        var recordingOrder = new RecordingOrder(fullURL(channel), filename, start, end);
 
         manager.record(recordingOrder);
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    @GetMapping("/record/after/{after}/time/{time}")
-    public ResponseEntity<Void> record2(@PathVariable("time") int time, @PathVariable("after") int after) {
+    @GetMapping("/record/channel/{channel}/after/{after}/time/{time}")
+    public ResponseEntity<Void> record2(@PathVariable("channel") String channel, @PathVariable("time") int time, @PathVariable("after") int after) {
         var start = LocalDateTime.now().plus(Duration.ofSeconds(after));
         var end = start.plus(Duration.ofSeconds(time));
-        var recordingOrder = new RecordingOrder(url, filename, start, end);
+        var recordingOrder = new RecordingOrder(fullURL(channel), filename, start, end);
 
         manager.record(recordingOrder);
 
@@ -65,5 +65,9 @@ public class RecorderController {
         manager.stop();
 
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    private String fullURL(String channel) {
+        return tvhBaseURL + "/stream/channel/" + channel;
     }
 }
