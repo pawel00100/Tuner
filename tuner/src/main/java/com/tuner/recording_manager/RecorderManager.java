@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.TreeSet;
@@ -20,7 +22,7 @@ import static com.tuner.utils.SchedulingUtils.getDate;
 @Component
 public class RecorderManager {
     private static final Logger logger = LoggerFactory.getLogger(RecorderManager.class);
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssX");
 
     @Value("${recording.fileSizeLoggingIntervalInSeconds}")
     int interval;
@@ -46,7 +48,7 @@ public class RecorderManager {
 
         recordingOrders.add(recordingOrder);
 
-        logger.info(String.format("Scheduled recording from: %s to: %s", recordingOrder.getStart().format(formatter), recordingOrder.getFinish().format(formatter)));
+        logger.info(String.format("Scheduled recording from: %s to: %s", formattedAtLocal(recordingOrder.getStart()), formattedAtLocal(recordingOrder.getFinish())));
     }
 
     public void stop() { //TODO: return result
@@ -118,5 +120,10 @@ public class RecorderManager {
         public void execute(JobExecutionContext jobExecutionContext) {
             logger.info(String.format("Recording. File size: %d MB", recorder.getSize() / 1000000));
         }
+    }
+
+    private String formattedAtLocal(ZonedDateTime time) {
+        var localTime = time.withZoneSameInstant(ZoneId.systemDefault());
+        return localTime.format(formatter);
     }
 }

@@ -34,7 +34,6 @@ public class ChannelController {
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         var read = mapper.readValue(response.body(), TVHChannelList.class);
-        System.out.println(read.getEntries());
 
         return new ResponseEntity<>(read.getEntries(), HttpStatus.OK);
 

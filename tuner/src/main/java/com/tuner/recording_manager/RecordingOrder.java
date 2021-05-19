@@ -1,18 +1,17 @@
 package com.tuner.recording_manager;
 
-import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 
 public class RecordingOrder {
     String id;
     String url;
     String filename;
-    //TODO: analyze if ZonedTImeDate would provide better timezone safety
-    LocalDateTime start;
-    LocalDateTime finish;
+    ZonedDateTime start;
+    ZonedDateTime finish;
 
     private static int num = 0;
 
-    public RecordingOrder(String url, String filename, LocalDateTime start, LocalDateTime finish) {
+    public RecordingOrder(String url, String filename, ZonedDateTime start, ZonedDateTime finish) {
         this.url = url;
         this.filename = filename;
         this.start = start;
@@ -37,19 +36,19 @@ public class RecordingOrder {
         this.filename = filename;
     }
 
-    public LocalDateTime getStart() {
+    public ZonedDateTime getStart() {
         return start;
     }
 
-    public void setStart(LocalDateTime start) {
+    public void setStart(ZonedDateTime start) {
         this.start = start;
     }
 
-    public LocalDateTime getFinish() {
+    public ZonedDateTime getFinish() {
         return finish;
     }
 
-    public void setFinish(LocalDateTime finish) {
+    public void setFinish(ZonedDateTime finish) {
         this.finish = finish;
     }
 

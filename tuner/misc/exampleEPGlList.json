@@ -1,0 +1,53 @@
+[
+  {
+    "eventId": 4205,
+    "episodeId": 4206,
+    "channelName": "Super Polsat",
+    "channelUuid": "8f7d87a0206b6371fe7ce759e6ca0c89",
+    "channelNumber": "11",
+    "start": 1620842400,
+    "stop": 1620850500,
+    "title": "Dorwać byłą",
+    "subtitle": "komedia romantyczna",
+    "summary": "komedia romantyczna",
+    "description": "Milo Boyd, były policjant, jest łowcą nagród. Nie wiedzie mu się najlepiej. Kolejne zlecenie może być rozwiązaniem jego kłopotów. Ma doprowadzić przed sąd swoją byłą żonę, dziennikarkę Nicole Hurley. Zadanie mocno się komplikuje.",
+    "genre": [
+      20
+    ],
+    "nextEventId": 4207
+  },
+  {
+    "eventId": 7859,
+    "episodeId": 7860,
+    "channelName": "TV Puls",
+    "channelUuid": "53faeed55e2fcf3f2394167ac9ed8474",
+    "channelNumber": "7",
+    "start": 1620842400,
+    "stop": 1620853200,
+    "title": "Igrzyska śmierci: W pierścieniu ognia",
+    "subtitle": "dramat SF",
+    "summary": "dramat SF",
+    "description": "Katniss i Peeta wygrali turniej, w którym stawką było życie. Stali się zarzewiem buntu stłamszonego społeczeństwa. Prezydent znów zmusza ich do walki. Ekranizacja drugiej części trylogii Suzanne Collins powiela sprawdzony schemat pierwszej odsłony.",
+    "genre": [
+      19
+    ],
+    "nextEventId": 7875
+  },
+  {
+    "eventId": 4123,
+    "episodeId": 4124,
+    "channelName": "TV4",
+    "channelUuid": "2e2a2a21613cd2e23dd5f2330c1ac982",
+    "channelNumber": "6",
+    "start": 1620844200,
+    "stop": 1620848400,
+    "title": "Sprawiedliwi - Wydział Kryminalny - s. X, odc. 484",
+    "subtitle": "serial kryminalny",
+    "summary": "serial kryminalny",
+    "description": "Do szpitala trafia Grzesiak, który usiłował popełnić samobójstwo. Latoszek i Kłos nie znajdują niczego, co mogłoby popchnąć mężczyznę do tego desperackiego kroku. Ola nagle wycofuje się ze śledztwa.",
+    "genre": [
+      16
+    ],
+    "nextEventId": 4125
+  }
+]

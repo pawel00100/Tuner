@@ -3,7 +3,8 @@ package com.tuner.utils;
 import org.quartz.*;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Date;
 
 public class SchedulingUtils {
@@ -35,7 +36,8 @@ public class SchedulingUtils {
         return DateBuilder.futureDate((int) duration.toSeconds(), DateBuilder.IntervalUnit.SECOND);
     }
 
-    public static Date getDate(LocalDateTime time) {
-        return java.sql.Timestamp.valueOf(time);
+    public static Date getDate(ZonedDateTime time) {
+        var localTime = time.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+        return java.sql.Timestamp.valueOf(localTime);
     }
 }
