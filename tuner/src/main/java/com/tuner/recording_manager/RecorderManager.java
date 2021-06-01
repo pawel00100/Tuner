@@ -11,18 +11,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.TreeSet;
 
-import static com.tuner.utils.SchedulingUtils.getDate;
+import static com.tuner.utils.TimezoneUtils.formattedAtLocal;
+import static com.tuner.utils.TimezoneUtils.getDate;
 
 @Component
 public class RecorderManager {
     private static final Logger logger = LoggerFactory.getLogger(RecorderManager.class);
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssX");
 
     @Value("${recording.fileSizeLoggingIntervalInSeconds}")
     int interval;
@@ -34,9 +31,13 @@ public class RecorderManager {
     JobDetail sizePollingJob = null;
     JobDetail stopJob = null;
     boolean recording = false;
-    TreeSet<RecordingOrder> recordingOrders = new TreeSet<>(Comparator.comparing(o -> o.start));
+    TreeSet<RecordingOrderInternal> recordingOrders = new TreeSet<>(Comparator.comparing(o -> o.start));
 
-    public void record(RecordingOrder recordingOrder) { //TODO: return result
+    public void record(RecordingOrderInternal recordingOrder) { //TODO: return result
+        if (identical(recordingOrder)) {
+            logger.trace("Skipping identical recording");
+            return;
+        }
         if (collides(recordingOrder)) {
             logger.warn("Trying to schedule recording during already planned recording");
             return;
@@ -48,7 +49,7 @@ public class RecorderManager {
 
         recordingOrders.add(recordingOrder);
 
-        logger.info(String.format("Scheduled recording from: %s to: %s", formattedAtLocal(recordingOrder.getStart()), formattedAtLocal(recordingOrder.getFinish())));
+        logger.info(String.format("Scheduled recording from: %s to: %s", formattedAtLocal(recordingOrder.getStart()), formattedAtLocal(recordingOrder.getEnd())));
     }
 
     public void stop() { //TODO: return result
@@ -66,10 +67,10 @@ public class RecorderManager {
         var order = recordingOrders.pollFirst(); // TODO: taking from tree is probably not the most roboust solution, probably job should ahve in itself - maybe replace quartz with somathong else?
         recorder.start(order.filename, order.url);
 
-        Duration duration = Duration.between(order.start, order.finish);
+        Duration duration = Duration.between(order.start, order.end);
         logger.info(String.format("Commanded recording for %d:%02d:%02d", duration.toSeconds() / 3600, (duration.toSeconds() % 3600) / 60, (duration.toSeconds() % 60)));
 
-        Trigger stopTrigger = SchedulingUtils.getOneRunTrigger(getDate(order.finish), "stopRecordingTrigger");
+        Trigger stopTrigger = SchedulingUtils.getOneRunTrigger(getDate(order.end), "stopRecordingTrigger");
         stopJob = schedule(SchedulingUtils.getJobDetail("stopRecordingJob", StopRecordingJob.class), stopTrigger);
 
         Trigger sizePollingTrigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "sizePollingRecordingTrigger");
@@ -96,9 +97,14 @@ public class RecorderManager {
         }
     }
 
-    private boolean collides(RecordingOrder recordingOrder) {
-        var newRange = Range.closed(recordingOrder.start, recordingOrder.finish);
-        return recordingOrders.stream().map(o -> Range.closed(o.start, o.finish)).anyMatch(r -> r.isConnected(newRange));
+    private boolean collides(RecordingOrderInternal recordingOrder) {
+        var newRange = Range.closed(recordingOrder.start, recordingOrder.end);
+        return recordingOrders.stream().map(o -> Range.closed(o.start, o.end)).anyMatch(r -> r.isConnected(newRange));
+    }
+
+    private boolean identical(RecordingOrderInternal recordingOrder) {
+        var potential = recordingOrders.ceiling(recordingOrder);
+        return recordingOrder.equals(potential);
     }
 
     private class StartRecordingJob implements Job {
@@ -122,8 +128,4 @@ public class RecorderManager {
         }
     }
 
-    private String formattedAtLocal(ZonedDateTime time) {
-        var localTime = time.withZoneSameInstant(ZoneId.systemDefault());
-        return localTime.format(formatter);
-    }
 }

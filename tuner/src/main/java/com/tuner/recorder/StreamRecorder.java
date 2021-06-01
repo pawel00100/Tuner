@@ -30,6 +30,7 @@ public class StreamRecorder {
     boolean allowedRecording = false;
     boolean recording = false;
     int size = 0;
+    long startTime;
 
     public void start(String filename, String url) {
         recording = true;
@@ -40,6 +41,7 @@ public class StreamRecorder {
                 e.printStackTrace();
             }
         }).start();
+        startTime = System.currentTimeMillis();
     }
 
     public void recordInternal(String filename, String url) throws IOException, InterruptedException {
@@ -65,7 +67,7 @@ public class StreamRecorder {
         stream.close();
         recording = false;
         size = 0;
-        logger.debug("stopped recording");
+        logger.info("stopped recording");
 
     }
 
@@ -75,6 +77,19 @@ public class StreamRecorder {
 
     public int getSize() {
         return size;
+    }
+
+    public boolean isRecording() {
+        return recording;
+    }
+
+    public int recordingTimeInSeconds() {
+        if (!recording) {
+            return 0;
+        }
+
+        long millis = System.currentTimeMillis() - startTime;
+        return (int) (millis / 1000);
     }
 
     private InputStream getStream(String url) throws IOException, InterruptedException {
