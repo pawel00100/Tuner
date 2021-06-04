@@ -29,7 +29,7 @@ public class EPGSender {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    int interval = 20;
+    int interval = 30;
     Scheduler scheduler;
 
     @Autowired
@@ -56,7 +56,12 @@ public class EPGSender {
     private void postEPG() {
         String requestBody = null;
         try {
-            requestBody = mapper.writeValueAsString(epgProvider.getParsed());
+            var aa = epgProvider.getParsed();
+            if (aa.isEmpty()) { //TODO: rethonk expretions
+                log.error("no epg returned");
+                return;
+            }
+            requestBody = mapper.writeValueAsString(aa);
         } catch (JsonProcessingException e) {
             log.error("Failed mapping epg for sending to server", e);
         }

@@ -33,7 +33,7 @@ public class RecordingOrdersFetcher {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    int interval = 20;
+    int interval = 10;
     Scheduler scheduler;
 
     @Autowired
@@ -58,6 +58,8 @@ public class RecordingOrdersFetcher {
     }
 
     private void getOrders() {
+        channelProvider.getChannelList(); //TODO: temp for filling cache
+
         URI uri = null;
         try {
             uri = new URIBuilder(serverURL + "/orders")

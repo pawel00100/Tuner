@@ -29,7 +29,7 @@ public class ChannelSender {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    int interval = 20;
+    int interval = 30;
     Scheduler scheduler;
 
     @Autowired
@@ -56,7 +56,12 @@ public class ChannelSender {
     private void postChannels() {
         String requestBody = null;
         try {
-            requestBody = mapper.writeValueAsString(channelProvider.getChannelList());
+            var aa = channelProvider.getChannelList();
+            if (aa.isEmpty()) { //TODO: temporary, rethunk expretions
+                log.error("no channels returned");
+                return;
+            }
+            requestBody = mapper.writeValueAsString(aa);
         } catch (JsonProcessingException e) {
             log.error("Failed mapping channel list for sending to server", e);
             return;

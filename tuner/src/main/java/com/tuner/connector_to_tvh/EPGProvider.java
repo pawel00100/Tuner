@@ -2,6 +2,7 @@ package com.tuner.connector_to_tvh;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -9,6 +10,7 @@ import com.tuner.model.tvh_responses.EPGEvent;
 import com.tuner.model.tvh_responses.EPGObject;
 import com.tuner.utils.rest_client.Requests;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +20,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -26,20 +27,39 @@ import java.util.concurrent.TimeUnit;
 public class EPGProvider {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
     private static final ObjectMapper mapper = new ObjectMapper();
-    private final LoadingCache<HttpRequest, HttpResponse<String>> epgCache = createEPGCache();
+    private final Cache<String, List<EPGEvent>> epgCache = createCache();
+
     @Value("${tvheadened.url}")
     private String url;
 
     public List<EPGEvent> getParsed() {
+        var retrieevd = epgCache.getIfPresent("A");
+        if (retrieevd != null) {
+            return retrieevd;
+        }
+        retrieevd = tryGettingParsed();
+        if (!retrieevd.isEmpty()) {
+            epgCache.put("A", retrieevd);
+        }
+        return retrieevd;
+    }
+
+    private List<EPGEvent> tryGettingParsed() {
         String authHeader = Requests.getAuthHeader("aa", "aa");
         var request = Requests.httpRequestWithAuth(url + "/api/epg/events/grid?limit=50000", authHeader);
 
         HttpResponse<String> response = null;
         List<EPGEvent> epg = Collections.emptyList();
         try {
-            response = epgCache.get(request);
-        } catch (ExecutionException e) {
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (IOException | InterruptedException e) {
             log.error("Failed getting epg from TVH", e);
+        }
+
+        if (response.statusCode() == HttpStatus.SC_OK) {
+            log.debug("Successfully got epg from TVH");
+        } else {
+            log.error("Failed getting epg from TVH, got status code: " + response.statusCode() + " response body: " + response.body());
             return epg;
         }
 
@@ -65,7 +85,7 @@ public class EPGProvider {
         return response.body();
     }
 
-    //TODO: don't save in cache if failure, right now will keep failure responses, make as singleton
+    //TODO: replace with malual map use with 15 min timer  make as singleton
     private LoadingCache<HttpRequest, HttpResponse<String>> createEPGCache() {
         return CacheBuilder.newBuilder()
                 .maximumSize(5)
@@ -76,5 +96,12 @@ public class EPGProvider {
                         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
                     }
                 });
+    }
+
+    private <K, V> Cache<K, V> createCache() {
+        return CacheBuilder.newBuilder()
+                .maximumSize(5)
+                .expireAfterWrite(30, TimeUnit.MINUTES)
+                .build();
     }
 }
