@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuner.connector_to_tvh.ChannelProvider;
+import com.tuner.connector_to_tvh.EPGProvider;
 import com.tuner.model.server_responses.RecordingOrderExternal;
 import com.tuner.recording_manager.RecorderManager;
 import com.tuner.recording_manager.RecordingOrderInternal;
@@ -40,6 +41,8 @@ public class RecordingOrdersFetcher {
     RecorderManager manager;
     @Autowired
     ChannelProvider channelProvider;
+    @Autowired
+    EPGProvider epgProvider;
     @Value("${tuner.id}")
     String id;
     @Value("${tvheadened.url}")
@@ -93,16 +96,20 @@ public class RecordingOrdersFetcher {
         log.debug("fetched " + obj.size() + " recording orders from server");
 
         obj.stream()
-                .filter(o -> o.getStart() > System.currentTimeMillis() / 1000)
+                .filter(o -> o.getEnd() > System.currentTimeMillis() / 1000)
                 .map(this::getRecordingOrder)
-                .peek(o -> System.out.println(o.getStart()))
                 .forEach(o -> manager.record(o));
     }
 
     private RecordingOrderInternal getRecordingOrder(RecordingOrderExternal o) {
         var startTime = LocalDateTime.ofEpochSecond(o.getStart(), 0, ZoneOffset.UTC).atZone(ZoneId.of("Z"));
         var endTime = LocalDateTime.ofEpochSecond(o.getEnd(), 0, ZoneOffset.UTC).atZone(ZoneId.of("Z"));
-        return new RecordingOrderInternal(fullURL(o.getChannelID()), createFilename(o.getChannelID(), startTime), startTime, endTime);
+
+        var programName = epgProvider.getParsed().stream()
+                .filter(e -> e.getChannelUuid().equals(o.getChannelID()))
+                .filter(e -> e.getStart() == o.getStart())
+                .findAny().get().getTitle();  //TODO: rethink if it should be assigned here - maybe in request?
+        return new RecordingOrderInternal(fullURL(o.getChannelID()), createFilename(o.getChannelID(), startTime), o.getChannelID(), programName, startTime, endTime);
     }
 
     private String fullURL(String channel) {

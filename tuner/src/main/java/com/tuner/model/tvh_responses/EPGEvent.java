@@ -13,6 +13,7 @@ public class EPGEvent {
     String channelName;
     String channelUuid;
     String channelNumber;
+    String channelIcon;
     long start;
     long stop;
     String title;

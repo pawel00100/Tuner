@@ -13,12 +13,27 @@ public class RecordingOrderInternal {
     String id;
     String url;
     String filename;
+    String channelId;
+    String programName;
     ZonedDateTime start;
     ZonedDateTime end;
 
-    public RecordingOrderInternal(String url, String filename, ZonedDateTime start, ZonedDateTime end) {
+    public RecordingOrderInternal(String url, String filename, String channelId, String programName, ZonedDateTime start, ZonedDateTime end) {
         this.url = url;
         this.filename = filename;
+        this.channelId = channelId;
+        this.programName = programName;
+        this.start = start;
+        this.end = end;
+        num++;
+        this.id = Integer.toString(num);
+    }
+
+    public RecordingOrderInternal(String url, String filename, ZonedDateTime start, ZonedDateTime end) { //TODO: remove
+        this.url = url;
+        this.filename = filename;
+        this.channelId = null;
+        this.programName = null;
         this.start = start;
         this.end = end;
         num++;

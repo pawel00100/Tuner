@@ -4,8 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.tuner.model.tvh_responses.EPGEvent;
 import com.tuner.model.tvh_responses.EPGObject;
 import com.tuner.utils.rest_client.Requests;
@@ -16,7 +14,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Collections;
 import java.util.List;
@@ -53,7 +50,8 @@ public class EPGProvider {
         try {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (IOException | InterruptedException e) {
-            log.error("Failed getting epg from TVH", e);
+            log.error("Failed getting epg from TVH");
+            return epg;
         }
 
         if (response.statusCode() == HttpStatus.SC_OK) {
@@ -85,18 +83,6 @@ public class EPGProvider {
         return response.body();
     }
 
-    //TODO: replace with malual map use with 15 min timer  make as singleton
-    private LoadingCache<HttpRequest, HttpResponse<String>> createEPGCache() {
-        return CacheBuilder.newBuilder()
-                .maximumSize(5)
-                .expireAfterWrite(30, TimeUnit.MINUTES)
-                .build(new CacheLoader<>() {
-                    @Override
-                    public HttpResponse<String> load(HttpRequest request) throws Exception {
-                        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                    }
-                });
-    }
 
     private <K, V> Cache<K, V> createCache() {
         return CacheBuilder.newBuilder()

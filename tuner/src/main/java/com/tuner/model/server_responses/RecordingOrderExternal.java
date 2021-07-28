@@ -8,10 +8,10 @@ import lombok.Data;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RecordingOrderExternal {
 
-    @JsonProperty("channelUuid")
+    @JsonProperty("channel_id")
     String channelID;
     long start;
-    @JsonProperty("stop")
+    @JsonProperty("end")
     long end;
 
 

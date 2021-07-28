@@ -8,4 +8,10 @@ import java.util.List;
 public class TVHChannelList {
     List<Channel> entries;
 
+    public TVHChannelList(List<Channel> entries) {
+        this.entries = entries;
+    }
+
+    public TVHChannelList() {
+    }
 }

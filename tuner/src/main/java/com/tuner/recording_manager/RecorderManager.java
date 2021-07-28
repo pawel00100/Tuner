@@ -1,6 +1,8 @@
 package com.tuner.recording_manager;
 
 import com.google.common.collect.Range;
+import com.tuner.model.server_requests.RecordedFile;
+import com.tuner.recorded_files.RecordListProvider;
 import com.tuner.recorder.StreamRecorder;
 import com.tuner.utils.SchedulingUtils;
 import org.quartz.*;
@@ -11,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.TreeSet;
 
@@ -26,11 +29,14 @@ public class RecorderManager {
     @Autowired
     StreamRecorder recorder;
     @Autowired
+    RecordListProvider recordListProvider;
+    @Autowired
     Scheduler scheduler;
 
     JobDetail sizePollingJob = null;
     JobDetail stopJob = null;
     boolean recording = false;
+    RecordingOrderInternal currentOrder = null;
     TreeSet<RecordingOrderInternal> recordingOrders = new TreeSet<>(Comparator.comparing(o -> o.start));
 
     public void record(RecordingOrderInternal recordingOrder) { //TODO: return result
@@ -40,6 +46,14 @@ public class RecorderManager {
         }
         if (collides(recordingOrder)) {
             logger.warn("Trying to schedule recording during already planned recording");
+            return;
+        }
+
+        if (recordingOrder.start.toEpochSecond() <= System.currentTimeMillis()) {
+            recordingOrder.setStart(ZonedDateTime.now());
+            recordingOrders.add(recordingOrder);
+            logger.info(String.format("Scheduled recording from: now to: %s", formattedAtLocal(recordingOrder.getEnd())));
+            start();
             return;
         }
 
@@ -60,11 +74,14 @@ public class RecorderManager {
         }
         cancelJob(stopJob);
         cancelJob(sizePollingJob);
+        recordListProvider.registerRecording(new RecordedFile(currentOrder, recorder.recordingTimeInSeconds(), recorder.getSize()));
+        recording = false;
+        recordingOrders.pollFirst();
         sizePollingJob = null;
     }
 
     private void start() {
-        var order = recordingOrders.pollFirst(); // TODO: taking from tree is probably not the most roboust solution, probably job should ahve in itself - maybe replace quartz with somathong else?
+        var order = recordingOrders.first(); // TODO: taking from tree is probably not the most roboust solution, probably job should ahve in itself - maybe replace quartz with something else?
         recorder.start(order.filename, order.url);
 
         Duration duration = Duration.between(order.start, order.end);
@@ -76,6 +93,7 @@ public class RecorderManager {
         Trigger sizePollingTrigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "sizePollingRecordingTrigger");
         sizePollingJob = schedule(SchedulingUtils.getJobDetail("sizePollingRecordingJob", FileSizePollJob.class), sizePollingTrigger);
 
+        currentOrder = order;
         recording = true;
     }
 
@@ -104,7 +122,11 @@ public class RecorderManager {
 
     private boolean identical(RecordingOrderInternal recordingOrder) {
         var potential = recordingOrders.ceiling(recordingOrder);
-        return recordingOrder.equals(potential);
+
+        if (potential == null) {
+            return false;
+        }
+        return recordingOrder.getEnd().equals(potential.getEnd()) && recordingOrder.getChannelId().equals(potential.getChannelId());
     }
 
     private class StartRecordingJob implements Job {

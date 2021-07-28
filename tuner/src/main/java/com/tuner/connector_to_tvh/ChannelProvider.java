@@ -6,9 +6,11 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.tuner.model.tvh_responses.Channel;
 import com.tuner.model.tvh_responses.TVHChannelList;
+import com.tuner.persistence.db.ChannelListDAO;
 import com.tuner.utils.rest_client.Requests;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -28,21 +30,27 @@ public class ChannelProvider {
 
     private final Cache<String, List<Channel>> channelCache = createCache();
 
+    @Autowired
+    ChannelListDAO dao;
+
 
     @Value("${tvheadened.url}")
     private String url;
 
-    //TODO: cache results - will require making as singleton
+    //TODO: make as singleton?
     public List<Channel> getChannelList() {
-        var retrieevd = channelCache.getIfPresent("A");
-        if (retrieevd != null) {
-            return retrieevd;
+        var retrieved = channelCache.getIfPresent("A");
+        if (retrieved != null) {
+            return retrieved;
         }
-        retrieevd = tryGettingChannels();
-        if (!retrieevd.isEmpty()) {
-            channelCache.put("A", retrieevd);
+        retrieved = tryGettingChannels();
+        if (!retrieved.isEmpty()) {
+            channelCache.put("A", retrieved);
+            dao.deleteAll();
+            dao.addAll(retrieved);
+            return retrieved;
         }
-        return retrieevd;
+        return dao.getAll();
     }
 
     private List<Channel> tryGettingChannels() {
@@ -54,7 +62,7 @@ public class ChannelProvider {
         try {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (IOException | InterruptedException e) {
-            log.error("Failed getting channel list from TVH", e);
+            log.error("Failed getting channel list from TVH");
             return channels;
         }
 
