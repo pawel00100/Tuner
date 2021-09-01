@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuner.connector_to_tvh.EPGProvider;
 import com.tuner.recording_manager.RecorderManager;
+import com.tuner.settings.SettingsProvider;
 import com.tuner.utils.SchedulingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpStatus;
@@ -44,13 +45,15 @@ public class EPGSender {
     String serverURL;
 
 
-    public EPGSender(@Autowired Scheduler scheduler) throws SchedulerException {
+    public EPGSender(@Autowired Scheduler scheduler, @Autowired SettingsProvider settingsProvider) throws SchedulerException {
         this.scheduler = scheduler;
         Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "EPGlSenderTrigger");
         JobDetail jobDetail = SchedulingUtils.getJobDetail("EPGSenderJob", HeartbeatJob.class);
 
         scheduler.scheduleJob(jobDetail, trigger);
 
+        settingsProvider.subscribe("tvheadened.url", c -> tvhBaseURL = c);
+        settingsProvider.subscribe("server.url", c -> serverURL = c);
     }
 
     private void postEPG() {

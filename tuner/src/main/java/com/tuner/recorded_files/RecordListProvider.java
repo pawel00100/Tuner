@@ -2,8 +2,10 @@ package com.tuner.recorded_files;
 
 import com.tuner.model.server_requests.RecordedFile;
 import com.tuner.persistence.db.RecordedFileDAO;
+import com.tuner.settings.SettingsProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -18,7 +20,12 @@ public class RecordListProvider {
     @Autowired
     RecordedFileDAO dao;
 
-    public RecordListProvider() {
+    @Value("${recording.location}")
+    String location;
+
+    public RecordListProvider(@Autowired SettingsProvider settingsProvider) {
+        settingsProvider.subscribe("tvheadened.url", c -> location = c);
+
     }
 
     public void registerRecording(RecordedFile file) {
@@ -27,7 +34,7 @@ public class RecordListProvider {
 
 
     public List<RecordedFile> getRecordings() {
-        var files = Arrays.stream(new File(".").listFiles())
+        var files = Arrays.stream(new File(location).listFiles())
                 .filter(f -> f.getPath().endsWith(".mp4"))
                 .map(File::getName)
                 .collect(Collectors.toSet());

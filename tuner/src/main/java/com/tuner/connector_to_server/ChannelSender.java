@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuner.connector_to_tvh.ChannelProvider;
 import com.tuner.recording_manager.RecorderManager;
+import com.tuner.settings.SettingsProvider;
 import com.tuner.utils.SchedulingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpStatus;
@@ -44,13 +45,15 @@ public class ChannelSender {
     String serverURL;
 
 
-    public ChannelSender(@Autowired Scheduler scheduler) throws SchedulerException {
+    public ChannelSender(@Autowired Scheduler scheduler, @Autowired SettingsProvider settingsProvider) throws SchedulerException {
         this.scheduler = scheduler;
         Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "ChannelSenderTrigger");
         JobDetail jobDetail = SchedulingUtils.getJobDetail("ChannelSenderJob", HeartbeatJob.class);
 
         scheduler.scheduleJob(jobDetail, trigger);
 
+        settingsProvider.subscribe("tvheadened.url", c -> tvhBaseURL = c);
+        settingsProvider.subscribe("server.url", c -> serverURL = c);
     }
 
     private void postChannels() {

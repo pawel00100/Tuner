@@ -7,6 +7,7 @@ import com.google.common.cache.CacheBuilder;
 import com.tuner.model.tvh_responses.Channel;
 import com.tuner.model.tvh_responses.TVHChannelList;
 import com.tuner.persistence.db.ChannelListDAO;
+import com.tuner.settings.SettingsProvider;
 import com.tuner.utils.rest_client.Requests;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpStatus;
@@ -36,6 +37,11 @@ public class ChannelProvider {
 
     @Value("${tvheadened.url}")
     private String url;
+
+    public ChannelProvider(@Autowired SettingsProvider settingsProvider) {
+        settingsProvider.subscribe("tvheadened.url", c -> url = c);
+    }
+
 
     //TODO: make as singleton?
     public List<Channel> getChannelList() {

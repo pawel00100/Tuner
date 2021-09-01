@@ -1,8 +1,10 @@
 package com.tuner.recorder;
 
+import com.tuner.settings.SettingsProvider;
 import org.apache.commons.codec.binary.Base64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -25,12 +27,18 @@ public class StreamRecorder {
     String username;
     @Value("${tvheadened.password}")
     String password;
+    @Value("${recording.location}")
+    String location;
 
     byte[] buffer = new byte[102400];
     boolean allowedRecording = false;
     boolean recording = false;
     int size = 0;
     long startTime;
+
+    public StreamRecorder(@Autowired SettingsProvider settingsProvider) {
+        settingsProvider.subscribe("recording.location", c -> location = c);
+    }
 
     public void start(String filename, String url) {
         recording = true;
@@ -48,7 +56,7 @@ public class StreamRecorder {
         InputStream stream = getStream(url);
         allowedRecording = true;
 
-        File file = new File(filename);
+        File file = new File(location + "/" + filename);
         if (file.exists()) {
             file.delete();
         }

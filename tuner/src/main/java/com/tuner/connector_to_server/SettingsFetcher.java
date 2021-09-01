@@ -1,12 +1,12 @@
 package com.tuner.connector_to_server;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.tuner.recorded_files.RecordListProvider;
+import com.google.common.collect.Streams;
 import com.tuner.settings.SettingsProvider;
 import com.tuner.utils.SchedulingUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpStatus;
 import org.apache.http.client.utils.URIBuilder;
 import org.quartz.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,55 +20,42 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
 
 
-//This is temporary until heartbeat is implemented on server
 @Service
 @Slf4j
-public class RecordListSender {
+public class SettingsFetcher {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
     private static final ObjectMapper mapper = new ObjectMapper();
+    private static final List<String> changeableSettings = List.of();
 
-    int interval = 30;
+    int interval = 10;
     Scheduler scheduler;
 
-    @Autowired
-    RecordListProvider recordListProvider;
     @Value("${tuner.id}")
     String id;
-    @Value("${tvheadened.url}")
-    String tvhBaseURL;
+
     @Value("${server.url}")
     String serverURL;
 
+    SettingsProvider settingsProvider;
 
-    public RecordListSender(@Autowired Scheduler scheduler, @Autowired SettingsProvider settingsProvider) throws SchedulerException {
+    public SettingsFetcher(@Autowired Scheduler scheduler, @Autowired SettingsProvider settingsProvider) throws SchedulerException {
         this.scheduler = scheduler;
-        Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "RecordListSenderTrigger");
-        JobDetail jobDetail = SchedulingUtils.getJobDetail("RecordListSenderJob", HeartbeatJob.class);
+        this.settingsProvider = settingsProvider;
+        Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "settingsFetchTrigger");
+        JobDetail jobDetail = SchedulingUtils.getJobDetail("settingsFetchJob", SettingsFetchJob.class);
 
         scheduler.scheduleJob(jobDetail, trigger);
 
-        settingsProvider.subscribe("tvheadened.url", c -> tvhBaseURL = c);
         settingsProvider.subscribe("server.url", c -> serverURL = c);
     }
 
-    private void postRecordList() {
-        String requestBody = null;
-        try {
-            var aa = recordListProvider.getRecordings();
-            if (aa.isEmpty()) { //TODO: rethonk expretions
-                log.debug("empty recorded file list provided");
-                return;
-            }
-            requestBody = mapper.writeValueAsString(aa);
-        } catch (JsonProcessingException e) {
-            log.error("Failed mapping recorded file list for sending to server", e);
-        }
-
+    private void getSettings() {
         URI uri = null;
         try {
-            uri = new URIBuilder(serverURL + "/recorded")
+            uri = new URIBuilder(serverURL + "/settings")
                     .setParameter("id", id)
                     .build();
         } catch (URISyntaxException e) {
@@ -77,32 +64,41 @@ public class RecordListSender {
 
         var request = HttpRequest.newBuilder()
                 .uri(uri)
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .GET()
                 .build();
 
         HttpResponse<String> response = null;
         try {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (IOException | InterruptedException e) {
-            log.error("Failed posting recorded file list", e);
+            e.printStackTrace();
+            return;
+        }
+        String body = response.body();
+
+        //TODO: probably mapping to Settings object, and having Setting as an enum with keys would be more elegant
+        JsonNode tree = null;
+        try {
+            tree = mapper.readTree(body);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
             return;
         }
 
-        if (response.statusCode() == HttpStatus.SC_OK) {
-            log.debug("Successfully sent recorded file list to server");
-        } else {
-            log.error("Failed posting recorded file list, got status code: " + response.statusCode() + " response body: " + response.body());
-        }
+        Streams.stream(tree.get(0).fields())
+                .filter(n -> changeableSettings.contains(n.getKey()))
+                .forEach(n -> settingsProvider.set(n.getKey(), n.getValue().asText()));
+
     }
 
 
-    private class HeartbeatJob implements Job {
+    private class SettingsFetchJob implements Job {
         @Override
         public void execute(JobExecutionContext jobExecutionContext) {
             try {
-                postRecordList();
+                getSettings();
             } catch (Exception ex) {
-                log.warn("failed to post recorded file list", ex);
+                log.warn("failed to retrieve Settings", ex);
             }
         }
     }

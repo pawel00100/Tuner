@@ -49,7 +49,7 @@ public class RecorderManager {
             return;
         }
 
-        if (recordingOrder.start.toEpochSecond() <= System.currentTimeMillis()) {
+        if (recordingOrder.start.toEpochSecond() * 1000 <= System.currentTimeMillis()) {
             recordingOrder.setStart(ZonedDateTime.now());
             recordingOrders.add(recordingOrder);
             logger.info(String.format("Scheduled recording from: now to: %s", formattedAtLocal(recordingOrder.getEnd())));

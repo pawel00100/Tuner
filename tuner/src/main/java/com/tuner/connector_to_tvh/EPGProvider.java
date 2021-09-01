@@ -6,9 +6,11 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.tuner.model.tvh_responses.EPGEvent;
 import com.tuner.model.tvh_responses.EPGObject;
+import com.tuner.settings.SettingsProvider;
 import com.tuner.utils.rest_client.Requests;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +30,10 @@ public class EPGProvider {
 
     @Value("${tvheadened.url}")
     private String url;
+
+    public EPGProvider(@Autowired SettingsProvider settingsProvider) {
+        settingsProvider.subscribe("tvheadened.url", c -> url = c);
+    }
 
     public List<EPGEvent> getParsed() {
         var retrieevd = epgCache.getIfPresent("A");
