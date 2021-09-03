@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -19,7 +20,8 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 
 @Component
-public class StreamRecorder {
+@ConditionalOnProperty(name = "recorder.mocked", havingValue = "false", matchIfMissing = true)
+public class StreamRecorder implements Recorder {
     private static final HttpClient client = HttpClient.newHttpClient();
     private static final Logger logger = LoggerFactory.getLogger(StreamRecorder.class);
 
@@ -40,6 +42,7 @@ public class StreamRecorder {
         settingsProvider.subscribe("recording.location", c -> location = c);
     }
 
+    @Override
     public void start(String filename, String url) {
         recording = true;
         new Thread(() -> {
@@ -52,7 +55,32 @@ public class StreamRecorder {
         startTime = System.currentTimeMillis();
     }
 
-    public void recordInternal(String filename, String url) throws IOException, InterruptedException {
+    @Override
+    public void stop() {
+        allowedRecording = false;
+    }
+
+    @Override
+    public int getSize() {
+        return size;
+    }
+
+    @Override
+    public boolean isRecording() {
+        return recording;
+    }
+
+    @Override
+    public int recordingTimeInSeconds() {
+        if (!recording) {
+            return 0;
+        }
+
+        long millis = System.currentTimeMillis() - startTime;
+        return (int) (millis / 1000);
+    }
+
+    private void recordInternal(String filename, String url) throws IOException, InterruptedException {
         InputStream stream = getStream(url);
         allowedRecording = true;
 
@@ -77,27 +105,6 @@ public class StreamRecorder {
         size = 0;
         logger.info("stopped recording");
 
-    }
-
-    public void stop() {
-        allowedRecording = false;
-    }
-
-    public int getSize() {
-        return size;
-    }
-
-    public boolean isRecording() {
-        return recording;
-    }
-
-    public int recordingTimeInSeconds() {
-        if (!recording) {
-            return 0;
-        }
-
-        long millis = System.currentTimeMillis() - startTime;
-        return (int) (millis / 1000);
     }
 
     private InputStream getStream(String url) throws IOException, InterruptedException {

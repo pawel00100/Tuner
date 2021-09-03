@@ -6,12 +6,12 @@ import lombok.Data;
 public class HeatbeatRequest {
 
     String id;
-    int freeSpace;
+    long freeSpace;
     boolean isRecording;
     int currentRecordingTime;
     int currentRecordingSize;
 
-    public HeatbeatRequest(String id, int freeSpace, boolean isRecording, int currentRecordingTime, int currentRecordingSize) {
+    public HeatbeatRequest(String id, long freeSpace, boolean isRecording, int currentRecordingTime, int currentRecordingSize) {
         this.id = id;
         this.freeSpace = freeSpace;
         this.isRecording = isRecording;

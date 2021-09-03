@@ -1,0 +1,15 @@
+# syntax=docker/dockerfile:1
+
+FROM arm32v7/adoptopenjdk:16-jre-hotspot
+
+# copy the packaged jar file into our docker image
+COPY target/tuner-0.0.1-SNAPSHOT.jar /demo.jar
+
+EXPOSE 8080
+EXPOSE 5005
+
+ENV serverURL=null
+ENV tvhURL=null
+
+# set the startup command to execute the jar
+ENTRYPOINT ["java", "-jar", "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005", "/demo.jar"]

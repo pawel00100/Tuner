@@ -3,7 +3,7 @@ package com.tuner.recording_manager;
 import com.google.common.collect.Range;
 import com.tuner.model.server_requests.RecordedFile;
 import com.tuner.recorded_files.RecordListProvider;
-import com.tuner.recorder.StreamRecorder;
+import com.tuner.recorder.Recorder;
 import com.tuner.utils.SchedulingUtils;
 import org.quartz.*;
 import org.slf4j.Logger;
@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Comparator;
+import java.util.List;
 import java.util.TreeSet;
 
 import static com.tuner.utils.TimezoneUtils.formattedAtLocal;
@@ -27,7 +28,7 @@ public class RecorderManager {
     @Value("${recording.fileSizeLoggingIntervalInSeconds}")
     int interval;
     @Autowired
-    StreamRecorder recorder;
+    Recorder recorder;
     @Autowired
     RecordListProvider recordListProvider;
     @Autowired
@@ -38,6 +39,15 @@ public class RecorderManager {
     boolean recording = false;
     RecordingOrderInternal currentOrder = null;
     TreeSet<RecordingOrderInternal> recordingOrders = new TreeSet<>(Comparator.comparing(o -> o.start));
+
+    public void record(List<RecordingOrderInternal> newOrders) {
+        var toRemove = recordingOrders.stream()
+                .filter(RecordingOrderInternal::isFromServer)
+                .filter(o -> !newOrders.contains(o))
+                .toList();
+        recordingOrders.removeAll(toRemove);
+        newOrders.forEach(this::record);
+    }
 
     public void record(RecordingOrderInternal recordingOrder) { //TODO: return result
         if (identical(recordingOrder)) {

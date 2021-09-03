@@ -98,10 +98,11 @@ public class RecordingOrdersFetcher {
 
         log.debug("fetched " + obj.size() + " recording orders from server");
 
-        obj.stream()
+        var orders = obj.stream()
                 .filter(o -> o.getEnd() > System.currentTimeMillis() / 1000)
-                .map(this::getRecordingOrder)
-                .forEach(o -> manager.record(o));
+                .map(this::getRecordingOrder).toList();
+
+        manager.record(orders);
     }
 
     private RecordingOrderInternal getRecordingOrder(RecordingOrderExternal o) {
@@ -112,7 +113,7 @@ public class RecordingOrdersFetcher {
                 .filter(e -> e.getChannelUuid().equals(o.getChannelID()))
                 .filter(e -> e.getStart() == o.getStart())
                 .findAny().get().getTitle();  //TODO: rethink if it should be assigned here - maybe in request?
-        return new RecordingOrderInternal(fullURL(o.getChannelID()), createFilename(o.getChannelID(), startTime), o.getChannelID(), programName, startTime, endTime);
+        return new RecordingOrderInternal(fullURL(o.getChannelID()), createFilename(o.getChannelID(), startTime), o.getChannelID(), programName, startTime, endTime, true);
     }
 
     private String fullURL(String channel) {
