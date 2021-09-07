@@ -1,6 +1,7 @@
 package com.tuner.recording_manager;
 
 import com.google.common.collect.Range;
+import com.tuner.connector_to_tvh.ChannelProvider;
 import com.tuner.model.server_requests.RecordedFile;
 import com.tuner.recorded_files.RecordListProvider;
 import com.tuner.recorder.Recorder;
@@ -18,8 +19,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.TreeSet;
 
-import static com.tuner.utils.TimezoneUtils.formattedAtLocal;
-import static com.tuner.utils.TimezoneUtils.getDate;
+import static com.tuner.utils.TimezoneUtils.*;
 
 @Component
 public class RecorderManager {
@@ -31,14 +31,15 @@ public class RecorderManager {
     Recorder recorder;
     @Autowired
     RecordListProvider recordListProvider;
+    private final TreeSet<RecordingOrderInternal> recordingOrders = new TreeSet<>(Comparator.comparing(o -> o.getStart()));
     @Autowired
     Scheduler scheduler;
-
-    JobDetail sizePollingJob = null;
-    JobDetail stopJob = null;
-    boolean recording = false;
-    RecordingOrderInternal currentOrder = null;
-    TreeSet<RecordingOrderInternal> recordingOrders = new TreeSet<>(Comparator.comparing(o -> o.start));
+    @Autowired
+    ChannelProvider channelProvider;
+    private JobDetail sizePollingJob = null;
+    private JobDetail stopJob = null;
+    private boolean recording = false;
+    private RecordingOrderInternal currentOrder = null;
 
     public void record(List<RecordingOrderInternal> newOrders) {
         var toRemove = recordingOrders.stream()
@@ -59,7 +60,7 @@ public class RecorderManager {
             return;
         }
 
-        if (recordingOrder.start.toEpochSecond() * 1000 <= System.currentTimeMillis()) {
+        if (recordingOrder.getStart().toEpochSecond() * 1000 <= System.currentTimeMillis()) {
             recordingOrder.setStart(ZonedDateTime.now());
             recordingOrders.add(recordingOrder);
             logger.info(String.format("Scheduled recording from: now to: %s", formattedAtLocal(recordingOrder.getEnd())));
@@ -92,12 +93,14 @@ public class RecorderManager {
 
     private void start() {
         var order = recordingOrders.first(); // TODO: taking from tree is probably not the most roboust solution, probably job should ahve in itself - maybe replace quartz with something else?
-        recorder.start(order.filename, order.url);
+        String filename = createFilename(order.getChannelId(), order.getStart());
+        order.setFilename(filename);
+        recorder.start(filename, order.getChannelId());
 
-        Duration duration = Duration.between(order.start, order.end);
+        Duration duration = Duration.between(order.getStart(), order.getEnd());
         logger.info(String.format("Commanded recording for %d:%02d:%02d", duration.toSeconds() / 3600, (duration.toSeconds() % 3600) / 60, (duration.toSeconds() % 60)));
 
-        Trigger stopTrigger = SchedulingUtils.getOneRunTrigger(getDate(order.end), "stopRecordingTrigger");
+        Trigger stopTrigger = SchedulingUtils.getOneRunTrigger(getDate(order.getEnd()), "stopRecordingTrigger");
         stopJob = schedule(SchedulingUtils.getJobDetail("stopRecordingJob", StopRecordingJob.class), stopTrigger);
 
         Trigger sizePollingTrigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "sizePollingRecordingTrigger");
@@ -126,8 +129,8 @@ public class RecorderManager {
     }
 
     private boolean collides(RecordingOrderInternal recordingOrder) {
-        var newRange = Range.closed(recordingOrder.start, recordingOrder.end);
-        return recordingOrders.stream().map(o -> Range.closed(o.start, o.end)).anyMatch(r -> r.isConnected(newRange));
+        var newRange = Range.closed(recordingOrder.getStart(), recordingOrder.getEnd());
+        return recordingOrders.stream().map(o -> Range.closed(o.getStart(), o.getEnd())).anyMatch(r -> r.isConnected(newRange));
     }
 
     private boolean identical(RecordingOrderInternal recordingOrder) {
@@ -137,6 +140,10 @@ public class RecorderManager {
             return false;
         }
         return recordingOrder.getEnd().equals(potential.getEnd()) && recordingOrder.getChannelId().equals(potential.getChannelId());
+    }
+
+    private String createFilename(String channel, ZonedDateTime start) {
+        return channelProvider.getName(channel) + " " + formattedAtLocalForFilename(start) + ".mp4";
     }
 
     private class StartRecordingJob implements Job {

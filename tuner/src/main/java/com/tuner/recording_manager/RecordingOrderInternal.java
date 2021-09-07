@@ -10,34 +10,18 @@ import java.util.Objects;
 @Data
 public class RecordingOrderInternal {
     private static int num = 0;
-    String id;
-    String url;
-    String filename;
-    String channelId;
-    String programName;
-    ZonedDateTime plannedStart; //for recognition of same origin on server TODO: replace with id form server
-    ZonedDateTime start;
-    ZonedDateTime end;
-    boolean fromServer; //if true order should be deleted if not on server
+    private final String id;
+    private final String channelId;
+    private final String programName;
+    private final ZonedDateTime plannedStart; //for recognition of same origin on server TODO: replace with id form server
+    private final boolean fromServer; //if true order should be deleted if not on server
+    private String filename;
+    private ZonedDateTime start;
+    private ZonedDateTime end;
 
-    public RecordingOrderInternal(String url, String filename, String channelId, String programName, ZonedDateTime start, ZonedDateTime end, boolean fromServer) {
-        this.url = url;
-        this.filename = filename;
+    public RecordingOrderInternal(String channelId, String programName, ZonedDateTime start, ZonedDateTime end, boolean fromServer) {
         this.channelId = channelId;
         this.programName = programName;
-        this.start = start;
-        this.plannedStart = start;
-        this.end = end;
-        num++;
-        this.id = Integer.toString(num);
-        this.fromServer = fromServer;
-    }
-
-    public RecordingOrderInternal(String url, String filename, ZonedDateTime start, ZonedDateTime end, boolean fromServer) { //TODO: remove
-        this.url = url;
-        this.filename = filename;
-        this.channelId = null;
-        this.programName = null;
         this.start = start;
         this.plannedStart = start;
         this.end = end;
@@ -55,6 +39,13 @@ public class RecordingOrderInternal {
             return false;
         }
         var other = (RecordingOrderInternal) obj;
-        return Objects.equals(this.filename, other.filename) && Objects.equals(this.plannedStart, other.plannedStart) && Objects.equals(this.end, other.end);
+        return Objects.equals(this.channelId, other.channelId) &&
+                Objects.equals(this.plannedStart, other.plannedStart) &&
+                Objects.equals(this.end, other.end);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(channelId, plannedStart, end);
     }
 }

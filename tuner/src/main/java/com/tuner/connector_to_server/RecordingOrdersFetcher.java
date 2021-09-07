@@ -23,10 +23,11 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.*;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
-
-import static com.tuner.utils.TimezoneUtils.formattedAtLocalForFilename;
 
 
 @Service
@@ -35,8 +36,8 @@ public class RecordingOrdersFetcher {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    int interval = 10;
-    Scheduler scheduler;
+    private final int interval = 10;
+    private final Scheduler scheduler;
 
     @Autowired
     RecorderManager manager;
@@ -113,17 +114,8 @@ public class RecordingOrdersFetcher {
                 .filter(e -> e.getChannelUuid().equals(o.getChannelID()))
                 .filter(e -> e.getStart() == o.getStart())
                 .findAny().get().getTitle();  //TODO: rethink if it should be assigned here - maybe in request?
-        return new RecordingOrderInternal(fullURL(o.getChannelID()), createFilename(o.getChannelID(), startTime), o.getChannelID(), programName, startTime, endTime, true);
+        return new RecordingOrderInternal(o.getChannelID(), programName, startTime, endTime, true);
     }
-
-    private String fullURL(String channel) {
-        return tvhBaseURL + "/stream/channel/" + channel;
-    }
-
-    private String createFilename(String channel, ZonedDateTime start) {
-        return channelProvider.getName(channel) + " " + formattedAtLocalForFilename(start) + ".mp4";
-    }
-
 
     private class HeartbeatJob implements Job {
         @Override

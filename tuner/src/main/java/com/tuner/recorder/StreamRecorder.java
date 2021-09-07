@@ -31,23 +31,24 @@ public class StreamRecorder implements Recorder {
     String password;
     @Value("${recording.location}")
     String location;
-
-    byte[] buffer = new byte[102400];
-    boolean allowedRecording = false;
-    boolean recording = false;
-    int size = 0;
-    long startTime;
+    private final byte[] buffer = new byte[102400];
+    @Value("${tvheadened.url}")
+    String tvhBaseURL;
+    private boolean allowedRecording = false;
+    private boolean recording = false;
+    private int size = 0;
+    private long startTime;
 
     public StreamRecorder(@Autowired SettingsProvider settingsProvider) {
         settingsProvider.subscribe("recording.location", c -> location = c);
     }
 
     @Override
-    public void start(String filename, String url) {
+    public void start(String filename, String channelId) {
         recording = true;
         new Thread(() -> {
             try {
-                recordInternal(filename, url);
+                recordInternal(filename, channelId);
             } catch (IOException | InterruptedException e) { //TODO: Handle exceptions
                 e.printStackTrace();
             }
@@ -80,11 +81,11 @@ public class StreamRecorder implements Recorder {
         return (int) (millis / 1000);
     }
 
-    private void recordInternal(String filename, String url) throws IOException, InterruptedException {
-        InputStream stream = getStream(url);
+    private void recordInternal(String filename, String channelId) throws IOException, InterruptedException {
+        InputStream stream = getStream(fullURL(channelId));
         allowedRecording = true;
 
-        File file = new File(location + "/" + filename);
+        File file = new File(location, filename);
         if (file.exists()) {
             file.delete();
         }
@@ -105,6 +106,10 @@ public class StreamRecorder implements Recorder {
         size = 0;
         logger.info("stopped recording");
 
+    }
+
+    private String fullURL(String channelId) {
+        return tvhBaseURL + "/stream/channel/" + channelId;
     }
 
     private InputStream getStream(String url) throws IOException, InterruptedException {
