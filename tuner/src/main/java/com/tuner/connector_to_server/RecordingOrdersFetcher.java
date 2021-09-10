@@ -103,7 +103,7 @@ public class RecordingOrdersFetcher {
                 .filter(o -> o.getEnd() > System.currentTimeMillis() / 1000)
                 .map(this::getRecordingOrder).toList();
 
-        manager.record(orders);
+        manager.scheduleRecording(orders);
     }
 
     private RecordingOrderInternal getRecordingOrder(RecordingOrderExternal o) {

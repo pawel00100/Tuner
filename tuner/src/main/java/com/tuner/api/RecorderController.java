@@ -28,7 +28,7 @@ public class RecorderController {
         var endTime = startTime.plus(Duration.ofMinutes(defaultRecordingTime));
         var recordingOrder = new RecordingOrderInternal(channel, null, startTime, endTime, false);
 
-        manager.record(recordingOrder);
+        manager.scheduleRecording(recordingOrder);
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
@@ -39,7 +39,7 @@ public class RecorderController {
         var endTime = startTime.plus(Duration.ofSeconds(time));
         var recordingOrder = new RecordingOrderInternal(channel, null, startTime, endTime, false);
 
-        manager.record(recordingOrder);
+        manager.scheduleRecording(recordingOrder);
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
@@ -50,7 +50,7 @@ public class RecorderController {
         var endTime = startTime.plus(Duration.ofSeconds(time));
         var recordingOrder = new RecordingOrderInternal(channel, null, startTime, endTime, false);
 
-        manager.record(recordingOrder);
+        manager.scheduleRecording(recordingOrder);
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
@@ -61,7 +61,7 @@ public class RecorderController {
         var endTime = LocalDateTime.ofEpochSecond(end, 0, ZoneOffset.UTC).atZone(ZoneId.of("Z"));
         var recordingOrder = new RecordingOrderInternal(channel, null, startTime, endTime, false);
 
-        manager.record(recordingOrder);
+        manager.scheduleRecording(recordingOrder);
 
         return new ResponseEntity<>(HttpStatus.OK);
     }
