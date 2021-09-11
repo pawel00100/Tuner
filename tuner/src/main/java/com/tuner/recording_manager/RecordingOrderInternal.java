@@ -1,5 +1,6 @@
 package com.tuner.recording_manager;
 
+import com.tuner.model.server_requests.Channel;
 import lombok.Data;
 
 import java.time.ZonedDateTime;
@@ -11,7 +12,7 @@ import java.util.Objects;
 public class RecordingOrderInternal {
     private static int num = 0;
     private final String id;
-    private final String channelId;
+    private final Channel channel;
     private final String programName;
     private final ZonedDateTime plannedStart; //for recognition of same origin on server TODO: replace with id form server
     private final boolean fromServer; //if true order should be deleted if not on server
@@ -19,8 +20,8 @@ public class RecordingOrderInternal {
     private ZonedDateTime start;
     private ZonedDateTime end;
 
-    public RecordingOrderInternal(String channelId, String programName, ZonedDateTime start, ZonedDateTime end, boolean fromServer) {
-        this.channelId = channelId;
+    public RecordingOrderInternal(Channel channel, String programName, ZonedDateTime start, ZonedDateTime end, boolean fromServer) {
+        this.channel = channel;
         this.programName = programName;
         this.start = start;
         this.plannedStart = start;
@@ -39,13 +40,13 @@ public class RecordingOrderInternal {
             return false;
         }
         var other = (RecordingOrderInternal) obj;
-        return Objects.equals(this.channelId, other.channelId) &&
+        return Objects.equals(this.channel, other.channel) &&
                 Objects.equals(this.plannedStart, other.plannedStart) &&
                 Objects.equals(this.end, other.end);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(channelId, plannedStart, end);
+        return Objects.hash(channel, plannedStart, end);
     }
 }

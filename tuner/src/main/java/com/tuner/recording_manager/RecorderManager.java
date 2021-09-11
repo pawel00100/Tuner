@@ -2,6 +2,7 @@ package com.tuner.recording_manager;
 
 import com.google.common.collect.Range;
 import com.tuner.connector_to_tvh.ChannelProvider;
+import com.tuner.model.server_requests.Channel;
 import com.tuner.model.server_requests.RecordedFile;
 import com.tuner.recorded_files.RecordListProvider;
 import com.tuner.recorder.Recorder;
@@ -103,9 +104,9 @@ public class RecorderManager {
 
     private void start() {
         var order = recordingOrders.first().order(); // TODO: taking from tree is probably not the most roboust solution, probably job should ahve in itself - maybe replace quartz with something else?
-        String filename = createFilename(order.getChannelId(), order.getStart());
+        String filename = createFilename(order.getChannel(), order.getStart());
         order.setFilename(filename);
-        recorder.start(filename, order.getChannelId());
+        recorder.start(filename, order.getChannel().getId());
 
         logger.info("Commanded recording until {}", formattedAtLocal(order.getEnd()));
 
@@ -167,11 +168,11 @@ public class RecorderManager {
             return false;
         }
         return recordingOrder.getEnd().equals(potential.order().getEnd()) &&
-                recordingOrder.getChannelId().equals(potential.order().getChannelId());
+                recordingOrder.getChannel().equals(potential.order().getChannel());
     }
 
-    private String createFilename(String channel, ZonedDateTime start) {
-        return channelProvider.getName(channel) + " " + formattedAtLocalForFilename(start) + ".mp4";
+    private String createFilename(Channel channel, ZonedDateTime start) {
+        return channel.getName() + " " + formattedAtLocalForFilename(start) + ".mp4";
     }
 
     private JobAndTrigger createJobAndTrigger(String jobName, String triggerName, Class<? extends Job> job, Duration duration) {

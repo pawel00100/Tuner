@@ -1,6 +1,6 @@
 package com.tuner.persistence.db;
 
-import com.tuner.model.tvh_responses.Channel;
+import com.tuner.model.server_requests.Channel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 

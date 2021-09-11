@@ -41,7 +41,7 @@ public class RecordedFile {
 
     public RecordedFile(RecordingOrderInternal order, long length, long size) {
         this.filename = order.getFilename();
-        this.channelId = order.getChannelId();
+        this.channelId = order.getChannel().getId();
         this.programName = order.getProgramName();
         this.start = order.getStart().toEpochSecond();
         this.end = order.getEnd().toEpochSecond();

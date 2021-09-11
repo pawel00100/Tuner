@@ -1,7 +1,7 @@
 package com.tuner.api;
 
 import com.tuner.connector_to_tvh.ChannelProvider;
-import com.tuner.model.tvh_responses.Channel;
+import com.tuner.model.server_requests.Channel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +22,6 @@ public class ChannelController {
 
         return new ResponseEntity<>(channelProvider.getChannelList(), HttpStatus.OK);
     }
-
 
 }
 

@@ -89,17 +89,17 @@ public class RecordingOrdersFetcher {
         }
         String body = response.body();
 
-        List<RecordingOrderExternal> obj = null;
+        List<RecordingOrderExternal> ordersFromServer = null;
         try {
-            obj = mapper.readValue(body, new TypeReference<>() {
+            ordersFromServer = mapper.readValue(body, new TypeReference<>() {
             });
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
 
-        log.debug("fetched " + obj.size() + " recording orders from server");
+        log.debug("fetched " + ordersFromServer.size() + " recording orders from server");
 
-        var orders = obj.stream()
+        var orders = ordersFromServer.stream()
                 .filter(o -> o.getEnd() > System.currentTimeMillis() / 1000)
                 .map(this::getRecordingOrder).toList();
 
@@ -114,7 +114,7 @@ public class RecordingOrdersFetcher {
                 .filter(e -> e.getChannelUuid().equals(o.getChannelID()))
                 .filter(e -> e.getStart() == o.getStart())
                 .findAny().get().getTitle();  //TODO: rethink if it should be assigned here - maybe in request?
-        return new RecordingOrderInternal(o.getChannelID(), programName, startTime, endTime, true);
+        return new RecordingOrderInternal(channelProvider.getChannel(o.getChannelID()), programName, startTime, endTime, true);
     }
 
     private class HeartbeatJob implements Job {

@@ -1,9 +1,11 @@
 package com.tuner.recording_manager;
 
 import com.tuner.connector_to_tvh.ChannelProvider;
+import com.tuner.model.server_requests.Channel;
 import com.tuner.recorded_files.RecordListProvider;
 import com.tuner.recorder.MockRecorder;
 import com.tuner.recorder.Recorder;
+import com.tuner.settings.SettingsProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatcher;
@@ -26,7 +28,7 @@ class RecorderManagerTest {
     Recorder recorder = spy(new MockRecorder());
     RecordListProvider recordListProvider = mock(RecordListProvider.class);
     Scheduler scheduler = mock(Scheduler.class);
-    ChannelProvider channelProvider = mock(ChannelProvider.class);
+    ChannelProvider channelProvider = spy(new ChannelProvider(mock(SettingsProvider.class)));
 
     private RecorderManager recorderManagerSpied;
 
@@ -34,6 +36,12 @@ class RecorderManagerTest {
     void beforeAll() {
         RecorderManager recorderManager = new RecorderManager(recorder, recordListProvider, scheduler, channelProvider);
         recorderManagerSpied = spy(recorderManager);
+
+        List<Channel> channels = Arrays.asList(
+                new Channel("channel1", "Channel 1", "mux1", "Mux 1"),
+                new Channel("channel2", "Channel 2", "mux1", "Mux 1"),
+                new Channel("channel3", "Channel 3", "mux2", "Mux 2"));
+        doAnswer(i -> channels).when(channelProvider).getChannelList();
     }
 
     @Test
@@ -166,9 +174,9 @@ class RecorderManagerTest {
         innerInstance.execute(null);
     }
 
-    private static RecordingOrderInternal getOrder(String channelId, String programName, int startOffset, int endOffset) {
+    private RecordingOrderInternal getOrder(String channelId, String programName, int startOffset, int endOffset) {
         return new RecordingOrderInternal(
-                channelId,
+                channelProvider.getChannel(channelId),
                 programName,
                 ZonedDateTime.now().plus(startOffset, ChronoUnit.MINUTES),
                 ZonedDateTime.now().plus(endOffset, ChronoUnit.MINUTES),
