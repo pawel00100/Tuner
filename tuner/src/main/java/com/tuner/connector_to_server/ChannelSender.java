@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuner.connector_to_tvh.ChannelProvider;
 import com.tuner.recording_manager.RecorderManager;
 import com.tuner.settings.SettingsProvider;
-import com.tuner.utils.SchedulingUtils;
+import com.tuner.utils.scheduling.SchedulingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.utils.URIBuilder;

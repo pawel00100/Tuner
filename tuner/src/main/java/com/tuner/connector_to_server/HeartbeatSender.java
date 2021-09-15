@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuner.model.server_requests.HeatbeatRequest;
 import com.tuner.model.server_responses.HeartbeatResponse;
 import com.tuner.recorder.Recorder;
-import com.tuner.utils.SchedulingUtils;
+import com.tuner.utils.scheduling.SchedulingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.*;
 import org.springframework.beans.factory.annotation.Autowired;

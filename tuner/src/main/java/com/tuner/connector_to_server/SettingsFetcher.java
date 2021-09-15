@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Streams;
 import com.tuner.settings.SettingsProvider;
-import com.tuner.utils.SchedulingUtils;
+import com.tuner.utils.scheduling.SchedulingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.utils.URIBuilder;
 import org.quartz.*;

@@ -9,7 +9,7 @@ import com.tuner.model.server_responses.RecordingOrderExternal;
 import com.tuner.recording_manager.RecorderManager;
 import com.tuner.recording_manager.RecordingOrderInternal;
 import com.tuner.settings.SettingsProvider;
-import com.tuner.utils.SchedulingUtils;
+import com.tuner.utils.scheduling.SchedulingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.utils.URIBuilder;
 import org.quartz.*;

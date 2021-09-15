@@ -1,7 +1,7 @@
 package com.tuner.recorder;
 
 public interface Recorder {
-    void start(String filename, String url);
+    void start(String filename, String channelName, String channelId);
 
     void stop();
 

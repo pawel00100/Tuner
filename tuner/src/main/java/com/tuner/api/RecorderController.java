@@ -69,9 +69,9 @@ public class RecorderController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    @PostMapping("/stop")
-    public ResponseEntity<Void> stop() {
-        manager.stop();
+    @PostMapping("/stop/channel/{channel}")
+    public ResponseEntity<Void> stop(@PathVariable("channel") String channel) {
+        manager.stop(channel);
 
         return new ResponseEntity<>(HttpStatus.OK);
     }

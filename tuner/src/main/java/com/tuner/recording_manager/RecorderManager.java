@@ -1,66 +1,66 @@
 package com.tuner.recording_manager;
 
 import com.google.common.collect.Range;
-import com.tuner.connector_to_tvh.ChannelProvider;
 import com.tuner.model.server_requests.Channel;
 import com.tuner.model.server_requests.RecordedFile;
 import com.tuner.recorded_files.RecordListProvider;
 import com.tuner.recorder.Recorder;
-import com.tuner.utils.SchedulingUtils;
+import com.tuner.utils.scheduling.JobAndTrigger;
+import com.tuner.utils.scheduling.SchedulingUtils;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
+import java.util.TreeMap;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static com.tuner.utils.TimezoneUtils.*;
+import static com.tuner.utils.scheduling.SchedulingUtils.createJobAndTrigger;
 
 @Component
 public class RecorderManager {
     private static final Logger logger = LoggerFactory.getLogger(RecorderManager.class);
-    @Value("${recording.fileSizeLoggingIntervalInSeconds}")
-    private static final int interval = 10;
-    private final TreeSet<ScheduledOrder> recordingOrders = new TreeSet<>(Comparator.comparing(o -> o.order().getStart()));
-    private final Recorder recorder;
+    private final TreeMap<String, ScheduledOrder> recordingOrders = new TreeMap<>(); //TODO: BiMap?
+    private final TreeMap<String, Recording> startedOrders = new TreeMap<>(); //TODO: BiMap?
     private final RecordListProvider recordListProvider;
     private final Scheduler scheduler;
-    private final ChannelProvider channelProvider;
-
-    private JobAndTrigger sizePollingJob = null;
-    private JobAndTrigger stopJob = null;
-    private boolean recording = false;
-    private RecordingOrderInternal currentOrder = null;
+    private final ApplicationContext applicationContext;
 
     @Autowired
-    public RecorderManager(Recorder recorder, RecordListProvider recordListProvider, Scheduler scheduler, ChannelProvider channelProvider) {
-        this.recorder = recorder;
+    public RecorderManager(ApplicationContext applicationContext, RecordListProvider recordListProvider, Scheduler scheduler) {
+        this.applicationContext = applicationContext;
         this.recordListProvider = recordListProvider;
         this.scheduler = scheduler;
-        this.channelProvider = channelProvider;
     }
 
     public void scheduleRecording(List<RecordingOrderInternal> newOrders) {
-        var toRemove = recordingOrders.stream()
+        var scheduledToRemove = recordingOrders.values().stream()
                 .filter(o -> o.order().isFromServer())
                 .filter(o -> !newOrders.contains(o.order()))
-                .collect(Collectors.toList());
+                .toList();
 
-        if (recording && !recordingOrders.isEmpty() && toRemove.contains(recordingOrders.first())) {
-            toRemove.remove(recordingOrders.first());
-            stop();
-        }
+        var currentToRemove = startedOrders.values().stream()
+                .filter(o -> o.order().isFromServer())
+                .filter(o -> !newOrders.contains(o.order()))
+                .toList();
 
-        toRemove.forEach(this::cancelJob);
-        newOrders.forEach(this::scheduleRecording);
+        currentToRemove.stream()
+                .filter(o -> startedOrders.values().stream().map(Recording::order).toList().contains(o.order()))
+                .forEach(o -> stop(o.order()));
+
+        scheduledToRemove.stream()
+                .filter(o -> !startedOrders.values().stream().map(Recording::order).toList().contains(o.order()))
+                .forEach(this::cancelJob);
+
+        newOrders.stream()
+                .filter(o -> !scheduledToRemove.stream().map(ScheduledOrder::order).toList().contains(o))
+                .forEach(this::scheduleRecording);
     }
 
     public void scheduleRecording(RecordingOrderInternal recordingOrder) { //TODO: return result
@@ -81,53 +81,80 @@ public class RecorderManager {
         Trigger startTrigger = SchedulingUtils.getOneRunTrigger(getDate(recordingOrder.getStart()), "startRecordingTrigger" + id);
         JobDetail jobDetail = SchedulingUtils.getJobDetail("startRecordingJob" + id, StartRecordingJob.class);
 
-        recordingOrders.add(new ScheduledOrder(recordingOrder, jobDetail, startTrigger));
+        recordingOrders.put("startRecordingJob" + id, new ScheduledOrder(recordingOrder, jobDetail, startTrigger));
 
         schedule(jobDetail, startTrigger);
 
         logger.info("Scheduled recording from: {} to: {}", formattedAtLocal(recordingOrder.getStart()), formattedAtLocal(recordingOrder.getEnd()));
     }
 
-    public void stop() { //TODO: return result
-        recorder.stop();
-        if (!recording) {
-            logger.warn("trying to stop when state is marked as not recording");
-            return;
-        }
-        cancelJob(stopJob);
-        cancelJob(sizePollingJob);
-        recordListProvider.registerRecording(new RecordedFile(currentOrder, recorder.recordingTimeInSeconds(), recorder.getSize()));
-        recording = false;
-        recordingOrders.pollFirst();
-        sizePollingJob = null;
+    public void stop(String channel) {
+        stop(channel, r -> r.order().getChannel().getId());
     }
 
-    private void start() {
-        var order = recordingOrders.first().order(); // TODO: taking from tree is probably not the most roboust solution, probably job should ahve in itself - maybe replace quartz with something else?
+    public void stop(RecordingOrderInternal recordingOrderInternal) {
+        stop(recordingOrderInternal, Recording::order);
+    }
+
+    private <T> void stop(T t, Function<Recording, T> function) {
+        var recording = startedOrders.values().stream()
+                .filter(r -> function.apply(r).equals(t))
+                .findAny();
+
+        if (recording.isEmpty()) {
+            logger.error("no recording found");
+            return;
+        }
+
+        stop(recording.get());
+    }
+
+    private void stop(JobExecutionContext jobExecutionContext) {
+        String name = jobExecutionContext.getJobDetail().getKey().getName();
+        var recording = startedOrders.get(name);
+        stop(recording);
+    }
+
+    private void stop(Recording rec) { //TODO: return result
+        Recorder recorder = rec.recorder();
+        recorder.stop();
+
+        cancelJob(rec.stop());
+        recordListProvider.registerRecording(new RecordedFile(rec.order(), recorder.recordingTimeInSeconds(), recorder.getSize()));
+        startedOrders.entrySet().stream()
+                .filter(e -> e.getValue().equals(rec))
+                .findAny()
+                .ifPresent(e -> startedOrders.remove(e.getKey()));
+    }
+
+    private void start(JobExecutionContext jobExecutionContext) {
+        String name = jobExecutionContext.getJobDetail().getKey().getName();
+        var order = recordingOrders.get(name);
+        start(order);
+    }
+
+    private void start(ScheduledOrder scheduledOrder) {
+        var order = scheduledOrder.order();
         String filename = createFilename(order.getChannel(), order.getStart());
         order.setFilename(filename);
-        recorder.start(filename, order.getChannel().getId());
+        Recorder recorder = createRecorder();
+        recorder.start(filename, order.getChannel().getName(), order.getChannel().getId());
 
         logger.info("Commanded recording until {}", formattedAtLocal(order.getEnd()));
 
-        stopJob = createJobAndTrigger("stopRecordingJob", "stopRecordingTrigger", StopRecordingJob.class, getDate(order.getEnd()));
+        String id = order.getId();
+        JobAndTrigger stopJob = createJobAndTrigger("stopRecordingJob" + id, "stopRecordingTrigger" + id, StopRecordingJob.class, getDate(order.getEnd()));
         schedule(stopJob);
 
-        sizePollingJob = createJobAndTrigger("sizePollingRecordingJob", "sizePollingRecordingTrigger", FileSizePollJob.class, Duration.ofSeconds(interval));
-        schedule(sizePollingJob);
-
-        currentOrder = order;
-        recording = true;
+        startedOrders.put("stopRecordingJob" + id, new Recording(order, stopJob, recorder));
+        recordingOrders.entrySet().stream()
+                .filter(e -> e.getValue().order().equals(order))
+                .findAny()
+                .ifPresent(e -> recordingOrders.remove(e.getKey()));
     }
 
     private JobDetail schedule(JobDetail job, Trigger trigger) {
-        try {
-            scheduler.scheduleJob(job, trigger);
-            return job;
-        } catch (SchedulerException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return SchedulingUtils.schedule(scheduler, job, trigger);
     }
 
     private JobDetail schedule(JobAndTrigger jobAndTrigger) {
@@ -135,83 +162,71 @@ public class RecorderManager {
     }
 
     private void cancelJob(JobAndTrigger jobAndTrigger) {
-        try {
-            scheduler.unscheduleJob(jobAndTrigger.trigger().getKey());
-            scheduler.deleteJob(jobAndTrigger.jobDetail().getKey());
-        } catch (SchedulerException e) {
-            e.printStackTrace();
-        }
+        SchedulingUtils.cancelJob(scheduler, jobAndTrigger);
     }
 
     private void cancelJob(ScheduledOrder order) {
-        try {
-            scheduler.unscheduleJob(order.trigger().getKey());
-            scheduler.deleteJob(order.jobDetail().getKey());
-        } catch (SchedulerException e) {
-            e.printStackTrace();
-        }
-        recordingOrders.remove(order);
+        cancelJob(order.jobAndTrigger());
+        recordingOrders.values().remove(order);
     }
-
 
     private boolean collides(RecordingOrderInternal recordingOrder) {
         var newRange = Range.closed(recordingOrder.getStart(), recordingOrder.getEnd());
-        return recordingOrders.stream()
-                .map(o -> Range.closed(o.order().getStart(), o.order().getEnd()))
+        var scheduled = recordingOrders.values().stream()
+                .map(ScheduledOrder::order);
+
+        var current = startedOrders.values().stream()
+                .map(Recording::order);
+
+        return Stream.concat(scheduled, current)
+                .filter(o -> !sameMultiplex(recordingOrder, o))
+                .map(o -> Range.closed(o.getStart(), o.getEnd()))
                 .anyMatch(r -> r.isConnected(newRange));
     }
 
     private boolean identical(RecordingOrderInternal recordingOrder) {
-        var potential = recordingOrders.ceiling(new ScheduledOrder(recordingOrder, null, null));
+        return recordingOrders.values().stream().anyMatch(o -> o.order().equals(recordingOrder)) ||
+                startedOrders.values().stream().anyMatch(o -> o.order().equals(recordingOrder));
+    }
 
-        if (potential == null) {
-            return false;
-        }
-        return recordingOrder.getEnd().equals(potential.order().getEnd()) &&
-                recordingOrder.getChannel().equals(potential.order().getChannel());
+    private boolean sameMultiplex(RecordingOrderInternal first, RecordingOrderInternal second) {
+        return second.getChannel().getMultiplexID().equals(first.getChannel().getMultiplexID());
     }
 
     private String createFilename(Channel channel, ZonedDateTime start) {
         return channel.getName() + " " + formattedAtLocalForFilename(start) + ".mp4";
     }
 
-    private JobAndTrigger createJobAndTrigger(String jobName, String triggerName, Class<? extends Job> job, Duration duration) {
-        Trigger trigger = SchedulingUtils.getScheduledTrigger(duration, triggerName);
-        JobDetail jobDetail = SchedulingUtils.getJobDetail(jobName, job);
-        return new JobAndTrigger(jobDetail, trigger);
+    private Recorder createRecorder() {
+        return applicationContext.getBean(Recorder.class);
     }
 
-    private JobAndTrigger createJobAndTrigger(String jobName, String triggerName, Class<? extends Job> job, Date date) {
-        Trigger trigger = SchedulingUtils.getOneRunTrigger(date, triggerName);
-        JobDetail jobDetail = SchedulingUtils.getJobDetail(jobName, job);
-        return new JobAndTrigger(jobDetail, trigger);
+    private record Recording(RecordingOrderInternal order, JobAndTrigger stop, Recorder recorder) {
     }
 
-    private record ScheduledOrder(RecordingOrderInternal order, JobDetail jobDetail, Trigger trigger) {
-    }
+    private record ScheduledOrder(RecordingOrderInternal order, JobAndTrigger jobAndTrigger) {
 
-    private record JobAndTrigger(JobDetail jobDetail, Trigger trigger) {
+        private ScheduledOrder(RecordingOrderInternal order, JobDetail jobDetail, Trigger trigger) {
+            this(order, new JobAndTrigger(jobDetail, trigger));
+        }
+
+        public ScheduledOrder(RecordingOrderInternal order, JobAndTrigger jobAndTrigger) {
+            this.order = order;
+            this.jobAndTrigger = jobAndTrigger;
+        }
     }
 
     public class StartRecordingJob implements Job {
         @Override
         public void execute(JobExecutionContext jobExecutionContext) {
-            start();
+            start(jobExecutionContext);
         }
     }
 
     public class StopRecordingJob implements Job {
         @Override
         public void execute(JobExecutionContext jobExecutionContext) {
-            stop();
+            stop(jobExecutionContext);
         }
     }
-
-    public class FileSizePollJob implements Job {
-        @Override
-        public void execute(JobExecutionContext jobExecutionContext) {
-            logger.info("Recording. File size: {} MB", recorder.getSize() / 1000000);
-        }
-    }
-
 }
