@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -30,7 +31,9 @@ public class SettingsFetcher {
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final List<String> changeableSettings = List.of();
 
+    @Value("${polling.intervalInSeconds}")
     int interval = 10;
+    @Autowired
     Scheduler scheduler;
 
     @Value("${tuner.id}")
@@ -38,12 +41,11 @@ public class SettingsFetcher {
 
     @Value("${server.url}")
     String serverURL;
-
+    @Autowired
     SettingsProvider settingsProvider;
 
-    public SettingsFetcher(@Autowired Scheduler scheduler, @Autowired SettingsProvider settingsProvider) throws SchedulerException {
-        this.scheduler = scheduler;
-        this.settingsProvider = settingsProvider;
+    @PostConstruct
+    void postConstruct() throws SchedulerException {
         Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "settingsFetchTrigger");
         JobDetail jobDetail = SchedulingUtils.getJobDetail("settingsFetchJob", SettingsFetchJob.class);
 

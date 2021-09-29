@@ -9,7 +9,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,6 +37,10 @@ public class RecordListProvider {
 
 
     public List<RecordedFile> getRecordings() {
+        if (!Files.isDirectory(Paths.get(location))) {
+            return Collections.emptyList();
+        }
+
         var files = Arrays.stream(new File(location).listFiles())
                 .filter(f -> f.getPath().endsWith(".mp4"))
                 .map(File::getName)

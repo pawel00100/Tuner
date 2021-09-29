@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Component;
 
-import javax.persistence.EntityManagerFactory;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -23,8 +22,6 @@ public abstract class GenericDao<T> {
     @Autowired
     protected JpaRepository<T, Integer> repository;
 
-    @Autowired
-    private EntityManagerFactory hibernateFactory;
 
 
     public boolean add(T object) {

@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -28,6 +29,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 
 @Service
@@ -36,8 +38,10 @@ public class RecordingOrdersFetcher {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    private final int interval = 10;
-    private final Scheduler scheduler;
+    @Value("${polling.intervalInSeconds.fast}")
+    int interval;
+    @Autowired
+    Scheduler scheduler;
 
     @Autowired
     RecorderManager manager;
@@ -51,10 +55,11 @@ public class RecordingOrdersFetcher {
     String tvhBaseURL;
     @Value("${server.url}")
     String serverURL;
+    @Autowired
+    SettingsProvider settingsProvider;
 
-
-    public RecordingOrdersFetcher(@Autowired Scheduler scheduler, @Autowired SettingsProvider settingsProvider) throws SchedulerException {
-        this.scheduler = scheduler;
+    @PostConstruct
+    void postConstruct() throws SchedulerException {
         Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "recordingOrderTrigger");
         JobDetail jobDetail = SchedulingUtils.getJobDetail("recordingOrderJob", HeartbeatJob.class);
 
@@ -113,7 +118,8 @@ public class RecordingOrdersFetcher {
         var programName = epgProvider.getParsed().stream()
                 .filter(e -> e.getChannelUuid().equals(o.getChannelID()))
                 .filter(e -> e.getStart() == o.getStart())
-                .findAny().get().getTitle();  //TODO: rethink if it should be assigned here - maybe in request?
+                .findAny().orElseThrow(() -> new NoSuchElementException("Failed to find corresponding event in EPG"))
+                .getTitle();  //TODO: rethink if it should be assigned here - maybe in request?
         return new RecordingOrderInternal(channelProvider.getChannel(o.getChannelID()), programName, startTime, endTime, true);
     }
 

@@ -31,6 +31,7 @@ public class RecorderManager {
     private final RecordListProvider recordListProvider;
     private final Scheduler scheduler;
     private final ApplicationContext applicationContext;
+    private final Object obj = new Object();
 
     @Autowired
     public RecorderManager(ApplicationContext applicationContext, RecordListProvider recordListProvider, Scheduler scheduler) {
@@ -40,27 +41,31 @@ public class RecorderManager {
     }
 
     public void scheduleRecording(List<RecordingOrderInternal> newOrders) {
-        var scheduledToRemove = recordingOrders.values().stream()
-                .filter(o -> o.order().isFromServer())
-                .filter(o -> !newOrders.contains(o.order()))
-                .toList();
+        synchronized (obj) {
+            var scheduledToRemove = recordingOrders.values().stream()
+                    .filter(o -> o.order().isFromServer())
+                    .filter(o -> !newOrders.contains(o.order()))
+                    .toList();
 
-        var currentToRemove = startedOrders.values().stream()
-                .filter(o -> o.order().isFromServer())
-                .filter(o -> !newOrders.contains(o.order()))
-                .toList();
+            var currentToRemove = startedOrders.values().stream()
+                    .filter(o -> o.order().isFromServer())
+                    .filter(o -> !newOrders.contains(o.order()))
+                    .toList();
 
-        currentToRemove.stream()
-                .filter(o -> startedOrders.values().stream().map(Recording::order).toList().contains(o.order()))
-                .forEach(o -> stop(o.order()));
+            currentToRemove.stream()
+                    .filter(o -> startedOrders.values().stream().map(Recording::order).toList().contains(o.order()))
+                    .filter(o -> notEndingTightNow(o.order()))
+                    .forEach(o -> stop(o.order()));
 
-        scheduledToRemove.stream()
-                .filter(o -> !startedOrders.values().stream().map(Recording::order).toList().contains(o.order()))
-                .forEach(this::cancelJob);
+            scheduledToRemove.stream()
+                    .filter(o -> !startedOrders.values().stream().map(Recording::order).toList().contains(o.order()))
+                    .forEach(this::cancelJob);
 
-        newOrders.stream()
-                .filter(o -> !scheduledToRemove.stream().map(ScheduledOrder::order).toList().contains(o))
-                .forEach(this::scheduleRecording);
+            newOrders.stream()
+                    .filter(o -> !scheduledToRemove.stream().map(ScheduledOrder::order).toList().contains(o))
+                    .filter(this::notEndingTightNow)
+                    .forEach(this::scheduleRecording);
+        }
     }
 
     public void scheduleRecording(RecordingOrderInternal recordingOrder) { //TODO: return result
@@ -97,22 +102,26 @@ public class RecorderManager {
     }
 
     private <T> void stop(T t, Function<Recording, T> function) {
-        var recording = startedOrders.values().stream()
-                .filter(r -> function.apply(r).equals(t))
-                .findAny();
+        synchronized (obj) {
+            var recording = startedOrders.values().stream()
+                    .filter(r -> function.apply(r).equals(t))
+                    .findAny();
 
-        if (recording.isEmpty()) {
-            logger.error("no recording found");
-            return;
+            if (recording.isEmpty()) {
+                logger.error("no recording found");
+                return;
+            }
+
+            stop(recording.get());
         }
-
-        stop(recording.get());
     }
 
     private void stop(JobExecutionContext jobExecutionContext) {
-        String name = jobExecutionContext.getJobDetail().getKey().getName();
-        var recording = startedOrders.get(name);
-        stop(recording);
+        synchronized (obj) {
+            String name = jobExecutionContext.getJobDetail().getKey().getName();
+            var recording = startedOrders.get(name);
+            stop(recording);
+        }
     }
 
     private void stop(Recording rec) { //TODO: return result
@@ -128,9 +137,11 @@ public class RecorderManager {
     }
 
     private void start(JobExecutionContext jobExecutionContext) {
-        String name = jobExecutionContext.getJobDetail().getKey().getName();
-        var order = recordingOrders.get(name);
-        start(order);
+        synchronized (obj) {
+            String name = jobExecutionContext.getJobDetail().getKey().getName();
+            var order = recordingOrders.get(name);
+            start(order);
+        }
     }
 
     private void start(ScheduledOrder scheduledOrder) {
@@ -199,6 +210,10 @@ public class RecorderManager {
 
     private Recorder createRecorder() {
         return applicationContext.getBean(Recorder.class);
+    }
+
+    private boolean notEndingTightNow(RecordingOrderInternal o) {
+        return Math.abs(o.getEnd().toInstant().toEpochMilli() - System.currentTimeMillis()) > 2000;
     }
 
     private record Recording(RecordingOrderInternal order, JobAndTrigger stop, Recorder recorder) {

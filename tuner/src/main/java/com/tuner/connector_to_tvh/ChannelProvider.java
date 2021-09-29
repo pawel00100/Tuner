@@ -108,7 +108,6 @@ public class ChannelProvider {
         }
 
         try {
-            System.out.println(response.body());
             services = mapper.readValue(response.body(), TVHService.TVHServiceList.class).getEntries();
         } catch (JsonProcessingException e) {
             log.error("Failed mapping channel list from TVH", e);

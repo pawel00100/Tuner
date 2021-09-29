@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuner.model.server_requests.HeatbeatRequest;
 import com.tuner.model.server_responses.HeartbeatResponse;
 import com.tuner.recorder.Recorder;
+import com.tuner.settings.SettingsProvider;
 import com.tuner.utils.scheduling.SchedulingUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.quartz.*;
@@ -11,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -26,17 +28,19 @@ public class HeartbeatSender {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final File currentDir = new File(".");
+    @Autowired
     Scheduler scheduler;
     @Autowired
     Recorder recorder;
     @Value("${tuner.id}")
     String id;
-    //    @Value("${heartbeat.intervalInSeconds}")
-    int interval = 2;
+    @Value("${heartbeat.intervalInSeconds}")
+    int interval;
+    @Autowired
+    SettingsProvider settingsProvider;
 
-    public HeartbeatSender(@Autowired
-                                   Scheduler scheduler) throws SchedulerException {
-        this.scheduler = scheduler;
+    @PostConstruct
+    void postConstruct() throws SchedulerException {
         Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "heartbeatTrigger");
         JobDetail jobDetail = SchedulingUtils.getJobDetail("heartbeatJob", HeartbeatJob.class);
 

@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -30,7 +31,9 @@ public class ChannelSender {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
     private static final ObjectMapper mapper = new ObjectMapper();
 
+    @Value("${polling.intervalInSeconds}")
     int interval = 30;
+    @Autowired
     Scheduler scheduler;
 
     @Autowired
@@ -43,10 +46,11 @@ public class ChannelSender {
     String tvhBaseURL;
     @Value("${server.url}")
     String serverURL;
+    @Autowired
+    SettingsProvider settingsProvider;
 
-
-    public ChannelSender(@Autowired Scheduler scheduler, @Autowired SettingsProvider settingsProvider) throws SchedulerException {
-        this.scheduler = scheduler;
+    @PostConstruct
+    void postConstruct() throws SchedulerException {
         Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "ChannelSenderTrigger");
         JobDetail jobDetail = SchedulingUtils.getJobDetail("ChannelSenderJob", HeartbeatJob.class);
 

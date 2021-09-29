@@ -1,0 +1,27 @@
+{
+  "totalCount": 5208,
+  "entries": [
+    {
+      "eventId": 25269,
+      "channelName": "Channel 1",
+      "channelUuid": "b9fe4a8b90722d1da9fccfb45bb13419",
+      "channelNumber": "32",
+      "channelIcon": "imagecache/62",
+      "start": start1,
+      "stop": end1,
+      "title": "Title 1",
+      "nextEventId": 25310
+    },
+    {
+      "eventId": 25270,
+      "channelName": "Channel 2",
+      "channelUuid": "2538c2b55f8f937dd6a8d6bfe4049d3b",
+      "channelNumber": "33",
+      "channelIcon": "imagecache/63",
+      "start": start1,
+      "stop": end1,
+      "title": "Title 2",
+      "nextEventId": 25310
+    }
+  ]
+}

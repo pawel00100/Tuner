@@ -19,6 +19,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -31,8 +34,6 @@ public class StreamRecorder implements Recorder {
     private static final HttpClient client = HttpClient.newHttpClient();
     private static final Logger logger = LoggerFactory.getLogger(StreamRecorder.class);
     private static final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-    @Value("${recording.fileSizeLoggingIntervalInSeconds}")
-    private static final int interval = 10;
 
     private final byte[] buffer = new byte[102400];
     @Value("${tvheadened.username}")
@@ -43,6 +44,8 @@ public class StreamRecorder implements Recorder {
     String location;
     @Value("${tvheadened.url}")
     String tvhBaseURL;
+    @Value("${recording.fileSizeLoggingIntervalInSeconds}")
+    private int interval = 10;
     private String filename;
     private String channelName;
     private String channelId;
@@ -99,9 +102,9 @@ public class StreamRecorder implements Recorder {
     }
 
     private void recordInternal() throws IOException, InterruptedException {
-        InputStream stream = getStream(fullURL(channelId));
         allowedRecording = true;
 
+        ensureDirectoryExists();
         File file = new File(location, filename);
         if (file.exists()) {
             file.delete();
@@ -109,17 +112,22 @@ public class StreamRecorder implements Recorder {
 
         logger.info("Started recording channel " + channelName);
         scheduledFuture = executor.scheduleAtFixedRate(this::logFileSize, interval, interval, TimeUnit.SECONDS);
+
         try (FileOutputStream outputStream = new FileOutputStream(file)) {
 
-            int result = stream.read(buffer);
+            while (allowedRecording) {
+                InputStream stream = getStream(fullURL(channelId));
 
-            while (result != -1 && allowedRecording) {
-                size += result;
-                outputStream.write(buffer, 0, result);
-                result = stream.read(buffer);
+                int result = stream.read(buffer);
+
+                while (result != -1 && allowedRecording) {
+                    size += result;
+                    outputStream.write(buffer, 0, result);
+                    result = stream.read(buffer);
+                }
+                stream.close();
             }
         }
-        stream.close();
         recording = false;
         size = 0;
         logger.info("Stopped recording channel " + channelName);
@@ -144,5 +152,12 @@ public class StreamRecorder implements Recorder {
                 .GET()
                 .build(); //TODO: add checking for status code
         return client.send(request, HttpResponse.BodyHandlers.ofInputStream()).body();
+    }
+
+    private void ensureDirectoryExists() throws IOException {
+        Path path = Paths.get(location);
+        if (!Files.isDirectory(Paths.get(location))) {
+            Files.createDirectory(path);
+        }
     }
 }
