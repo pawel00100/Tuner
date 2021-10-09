@@ -9,21 +9,18 @@ import com.tuner.model.server_responses.RecordingOrderExternal;
 import com.tuner.recording_manager.RecorderManager;
 import com.tuner.recording_manager.RecordingOrderInternal;
 import com.tuner.settings.SettingsProvider;
+import com.tuner.utils.rest_client.RequestException;
+import com.tuner.utils.rest_client.URLBuilder;
 import com.tuner.utils.scheduling.SchedulingUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.client.utils.URIBuilder;
 import org.quartz.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -72,34 +69,23 @@ public class RecordingOrdersFetcher {
     private void getOrders() {
         channelProvider.getChannelList(); //TODO: temp for filling cache
 
-        URI uri = null;
-        try {
-            uri = new URIBuilder(serverURL + "/orders")
-                    .setParameter("id", id)
-                    .build();
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        }
-
-        var request = HttpRequest.newBuilder()
-                .uri(uri)
-                .GET()
-                .build();
-
-        HttpResponse<String> response = null;
-        try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-        }
-        String body = response.body();
-
         List<RecordingOrderExternal> ordersFromServer = null;
         try {
-            ordersFromServer = mapper.readValue(body, new TypeReference<>() {
-            });
+            ordersFromServer = new URLBuilder(serverURL + "/orders")
+                    .setParameter("id", id)
+                    .build()
+                    .GET()
+                    .build(httpClient)
+                    .send()
+                    .assertStatusCodeOK()
+                    .deserialize(new TypeReference<>() {
+                    });
+        } catch (URISyntaxException e) {
+            log.error("Failed building URI", e);
         } catch (JsonProcessingException e) {
-            e.printStackTrace();
+            log.error("Failed mapping record orders received from server", e);
+        } catch (RequestException e) {
+            log.error("Failed fetching record orders", e);
         }
 
         log.debug("fetched " + ordersFromServer.size() + " recording orders from server");

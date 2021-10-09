@@ -7,16 +7,15 @@ import com.google.common.cache.CacheBuilder;
 import com.tuner.model.tvh_responses.EPGEvent;
 import com.tuner.model.tvh_responses.EPGObject;
 import com.tuner.settings.SettingsProvider;
-import com.tuner.utils.rest_client.Requests;
+import com.tuner.utils.rest_client.RequestException;
+import com.tuner.utils.rest_client.URLBuilder;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
-import java.net.http.HttpResponse;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -47,46 +46,43 @@ public class EPGProvider {
         return retrieevd;
     }
 
-    private List<EPGEvent> tryGettingParsed() {
-        String authHeader = Requests.getAuthHeader("aa", "aa");
-        var request = Requests.httpRequestWithAuth(url + "/api/epg/events/grid?limit=50000", authHeader);
-
-        HttpResponse<String> response = null;
-        List<EPGEvent> epg = Collections.emptyList();
+    public String getRaw() {
         try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (IOException | InterruptedException e) {
-            log.error("Failed getting epg from TVH");
-            return epg;
+            return new URLBuilder(url + "/api/epg/events/grid?limit=50000")
+                    .build()
+                    .basicAuth("aa", "aa")
+                    .GET()
+                    .build(httpClient)
+                    .send()
+                    .assertStatusCodeOK()
+                    .getBody();
+        } catch (URISyntaxException e) {
+            log.error("Failed building URI", e);
+        } catch (RequestException e) {
+            log.error("Failed fetching epg", e);
         }
-
-        if (response.statusCode() == HttpStatus.SC_OK) {
-            log.debug("Successfully got epg from TVH");
-        } else {
-            log.error("Failed getting epg from TVH, got status code: " + response.statusCode() + " response body: " + response.body());
-            return epg;
-        }
-
-        try {
-            epg = mapper.readValue(response.body(), EPGObject.class).getEntries();
-        } catch (JsonProcessingException e) {
-            log.error("Failed mapping epg from TVH", e);
-        }
-        return epg;
+        return null;
     }
 
-    public String getRaw() {
-        String authHeader = Requests.getAuthHeader("aa", "aa");
-        var request = Requests.httpRequestWithAuth(url + "/api/epg/events/grid?limit=50000", authHeader);
-
-        HttpResponse<String> response = null;
+    private List<EPGEvent> tryGettingParsed() {
         try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (IOException | InterruptedException e) {
-            log.error("Failed getting epg from TVH", e);
+            return new URLBuilder(url + "/api/epg/events/grid?limit=50000")
+                    .build()
+                    .basicAuth("aa", "aa")
+                    .GET()
+                    .build(httpClient)
+                    .send()
+                    .assertStatusCodeOK()
+                    .deserialize(EPGObject.class)
+                    .getEntries();
+        } catch (URISyntaxException e) {
+            log.error("Failed building URI", e);
+        } catch (JsonProcessingException e) {
+            log.error("Failed mapping epg received from server", e);
+        } catch (RequestException e) {
+            log.error("Failed fetching epg", e);
         }
-
-        return response.body();
+        return Collections.emptyList();
     }
 
 

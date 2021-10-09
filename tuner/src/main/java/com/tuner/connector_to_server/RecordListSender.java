@@ -4,22 +4,18 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuner.recorded_files.RecordListProvider;
 import com.tuner.settings.SettingsProvider;
+import com.tuner.utils.rest_client.RequestException;
+import com.tuner.utils.rest_client.URLBuilder;
 import com.tuner.utils.scheduling.SchedulingUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.utils.URIBuilder;
 import org.quartz.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 
 
@@ -58,45 +54,29 @@ public class RecordListSender {
     }
 
     private void postRecordList() {
-        String requestBody = null;
-        try {
-            var aa = recordListProvider.getRecordings();
-            if (aa.isEmpty()) { //TODO: rethonk expretions
-                log.debug("empty recorded file list provided");
-                return;
-            }
-            requestBody = mapper.writeValueAsString(aa);
-        } catch (JsonProcessingException e) {
-            log.error("Failed mapping recorded file list for sending to server", e);
-        }
+        var recordings = recordListProvider.getRecordings();
 
-        URI uri = null;
-        try {
-            uri = new URIBuilder(serverURL + "/recorded")
-                    .setParameter("id", id)
-                    .build();
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        }
-
-        var request = HttpRequest.newBuilder()
-                .uri(uri)
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                .build();
-
-        HttpResponse<String> response = null;
-        try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (IOException | InterruptedException e) {
-            log.error("Failed posting recorded file list", e);
+        if (recordings.isEmpty()) {
+            log.debug("empty recorded file list provided");
             return;
         }
 
-        if (response.statusCode() == HttpStatus.SC_OK) {
-            log.debug("Successfully sent recorded file list to server");
-        } else {
-            log.error("Failed posting recorded file list, got status code: " + response.statusCode() + " response body: " + response.body());
+        try {
+            new URLBuilder(serverURL + "/recorded")
+                    .setParameter("id", id)
+                    .build()
+                    .post(recordings)
+                    .build(httpClient)
+                    .send()
+                    .assertStatusCodeOK();
+        } catch (URISyntaxException e) {
+            log.error("Failed building URI", e);
+        } catch (JsonProcessingException e) {
+            log.error("Failed mapping recorded file list for sending to server", e);
+        } catch (RequestException e) {
+            log.error("Failed posting recorded file list", e);
         }
+
     }
 
 

@@ -5,22 +5,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuner.connector_to_tvh.EPGProvider;
 import com.tuner.recording_manager.RecorderManager;
 import com.tuner.settings.SettingsProvider;
+import com.tuner.utils.rest_client.RequestException;
+import com.tuner.utils.rest_client.URLBuilder;
 import com.tuner.utils.scheduling.SchedulingUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.utils.URIBuilder;
 import org.quartz.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 
 
@@ -61,44 +57,26 @@ public class EPGSender {
     }
 
     private void postEPG() {
-        String requestBody = null;
-        try {
-            var aa = epgProvider.getParsed();
-            if (aa.isEmpty()) { //TODO: rethonk expretions
-                log.error("no epg returned");
-                return;
-            }
-            requestBody = mapper.writeValueAsString(aa);
-        } catch (JsonProcessingException e) {
-            log.error("Failed mapping epg for sending to server", e);
-        }
-
-        URI uri = null;
-        try {
-            uri = new URIBuilder(serverURL + "/epg")
-                    .setParameter("id", id)
-                    .build();
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        }
-
-        var request = HttpRequest.newBuilder()
-                .uri(uri)
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                .build();
-
-        HttpResponse<String> response = null;
-        try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (IOException | InterruptedException e) {
-            log.error("Failed posting epg", e);
+        var epg = epgProvider.getParsed();
+        if (epg.isEmpty()) {
+            log.debug("empty epg provided");
             return;
         }
 
-        if (response.statusCode() == HttpStatus.SC_OK) {
-            log.debug("Successfully sent epg to server");
-        } else {
-            log.error("Failed posting epg, got status code: " + response.statusCode() + " response body: " + response.body());
+        try {
+            new URLBuilder(serverURL + "/epg")
+                    .setParameter("id", id)
+                    .build()
+                    .post(epg)
+                    .build(httpClient)
+                    .send()
+                    .assertStatusCodeOK();
+        } catch (URISyntaxException e) {
+            log.error("Failed building URI", e);
+        } catch (JsonProcessingException e) {
+            log.error("Failed mapping epg for sending to server", e);
+        } catch (RequestException e) {
+            log.error("Failed posting epg", e);
         }
     }
 

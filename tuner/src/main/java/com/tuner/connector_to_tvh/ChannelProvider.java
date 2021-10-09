@@ -9,16 +9,15 @@ import com.tuner.model.tvh_responses.channel.TVHChannel;
 import com.tuner.model.tvh_responses.channel.TVHService;
 import com.tuner.persistence.db.ChannelListDAO;
 import com.tuner.settings.SettingsProvider;
-import com.tuner.utils.rest_client.Requests;
+import com.tuner.utils.rest_client.RequestException;
+import com.tuner.utils.rest_client.URLBuilder;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
-import java.net.http.HttpResponse;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -87,63 +86,45 @@ public class ChannelProvider {
     }
 
     private List<TVHService> tryGettingTVHServices() {
-        String authHeader = Requests.getAuthHeader("aa", "aa");
-        var request = Requests.httpRequestWithAuth(url + "/api/mpegts/service/grid", authHeader);
-
-        HttpResponse<String> response = null;
-        List<TVHService> services = Collections.emptyList();
-
         try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (IOException | InterruptedException e) {
-            log.error("Failed getting channel list from TVH");
-            return services;
-        }
-
-        if (response.statusCode() == HttpStatus.SC_OK) {
-            log.debug("Successfully got channel list from TVH");
-        } else {
-            log.error("Failed posting channel list, got status code: " + response.statusCode() + " response body: " + response.body());
-            return services;
-        }
-
-        try {
-            services = mapper.readValue(response.body(), TVHService.TVHServiceList.class).getEntries();
+            return new URLBuilder(url + "/api/mpegts/service/grid")
+                    .build()
+                    .basicAuth("aa", "aa")
+                    .GET()
+                    .build(httpClient)
+                    .send()
+                    .assertStatusCodeOK()
+                    .deserialize(TVHService.TVHServiceList.class)
+                    .getEntries();
+        } catch (URISyntaxException e) {
+            log.error("Failed building URI", e);
         } catch (JsonProcessingException e) {
-            log.error("Failed mapping channel list from TVH", e);
-            e.printStackTrace();
+            log.error("Failed mapping services received from server", e);
+        } catch (RequestException e) {
+            log.error("Failed fetching services", e);
         }
-        return services;
+        return Collections.emptyList();
     }
 
     private List<TVHChannel> tryGettingTVHChannels() {
-        String authHeader = Requests.getAuthHeader("aa", "aa");
-        var request = Requests.httpRequestWithAuth(url + "/api/channel/list", authHeader);
-
-        HttpResponse<String> response = null;
-        List<TVHChannel> channels = Collections.emptyList();
-
         try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (IOException | InterruptedException e) {
-            log.error("Failed getting channel list from TVH");
-            return channels;
-        }
-
-        if (response.statusCode() == HttpStatus.SC_OK) {
-            log.debug("Successfully got channel list from TVH");
-        } else {
-            log.error("Failed posting channel list, got status code: " + response.statusCode() + " response body: " + response.body());
-            return channels;
-        }
-
-        try {
-            channels = mapper.readValue(response.body(), TVHChannel.TVHChannelList.class).getEntries();
+            return new URLBuilder(url + "/api/channel/list")
+                    .build()
+                    .basicAuth("aa", "aa")
+                    .GET()
+                    .build(httpClient)
+                    .send()
+                    .assertStatusCodeOK()
+                    .deserialize(TVHChannel.TVHChannelList.class)
+                    .getEntries();
+        } catch (URISyntaxException e) {
+            log.error("Failed building URI", e);
         } catch (JsonProcessingException e) {
-            log.error("Failed mapping channel list from TVH", e);
-            e.printStackTrace();
+            log.error("Failed mapping channel list received from server", e);
+        } catch (RequestException e) {
+            log.error("Failed fetching channel list", e);
         }
-        return channels;
+        return Collections.emptyList();
     }
 
     //TODO: replace with malual map use with 15 min timer  make as singleton

@@ -5,22 +5,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuner.connector_to_tvh.ChannelProvider;
 import com.tuner.recording_manager.RecorderManager;
 import com.tuner.settings.SettingsProvider;
+import com.tuner.utils.rest_client.RequestException;
+import com.tuner.utils.rest_client.URLBuilder;
 import com.tuner.utils.scheduling.SchedulingUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.utils.URIBuilder;
 import org.quartz.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.io.IOException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 
 
@@ -61,45 +57,20 @@ public class ChannelSender {
     }
 
     private void postChannels() {
-        String requestBody = null;
         try {
-            var aa = channelProvider.getChannelList();
-            if (aa.isEmpty()) { //TODO: temporary, rethunk expretions
-                log.error("no channels returned");
-                return;
-            }
-            requestBody = mapper.writeValueAsString(aa);
+            new URLBuilder(serverURL + "/channels")
+                    .setParameter("id", id)
+                    .build()
+                    .post(channelProvider.getChannelList())
+                    .build(httpClient)
+                    .send()
+                    .assertStatusCodeOK();
+        } catch (URISyntaxException e) {
+            log.error("Failed building URI", e);
         } catch (JsonProcessingException e) {
             log.error("Failed mapping channel list for sending to server", e);
-            return;
-        }
-
-        URI uri = null;
-        try {
-            uri = new URIBuilder(serverURL + "/channels")
-                    .setParameter("id", id)
-                    .build();
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        }
-
-        var request = HttpRequest.newBuilder()
-                .uri(uri)
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                .build();
-
-        HttpResponse<String> response = null;
-        try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (IOException | InterruptedException e) {
+        } catch (RequestException e) {
             log.error("Failed posting channel list", e);
-            return;
-        }
-
-        if (response.statusCode() == HttpStatus.SC_OK) {
-            log.debug("Successfully sent channel list to server");
-        } else {
-            log.error("Failed posting channel list, got status code: " + response.statusCode() + " response body: " + response.body());
         }
     }
 

@@ -49,12 +49,12 @@ public class IntegrationTest {
         var channelList = Files.readString(Path.of("./src/test/resources/com/tuner/integrationtest/tvhresponses/channel_list.json"));
         var epgEventsGrid = Files.readString(Path.of("./src/test/resources/com/tuner/integrationtest/tvhresponses/epg_events_grid.json"))
                 .replaceAll("start1", Long.toString((timestamp - 1)))
-                .replaceAll("end1", Long.toString((timestamp + 15)));
+                .replaceAll("end1", Long.toString((timestamp + 20)));
         var servicesGrid = Files.readString(Path.of("./src/test/resources/com/tuner/integrationtest/tvhresponses/services_grid.json"));
         //Server get
         var orders = Files.readString(Path.of("./src/test/resources/com/tuner/integrationtest/serverresponses/orders.json"))
                 .replaceAll("start1", Long.toString((timestamp - 1)))
-                .replaceAll("end1", Long.toString((timestamp + 15)));
+                .replaceAll("end1", Long.toString((timestamp + 20)));
         var settings = Files.readString(Path.of("./src/test/resources/com/tuner/integrationtest/serverresponses/settings.json"));
 
 
@@ -95,7 +95,7 @@ public class IntegrationTest {
             List<LoggedRequest> str = findAll(postRequestedFor(urlPathMatching("/recorded.*")));
             List<String> str2 = str.stream().map(lr -> new String(lr.getBody())).toList();
             recorded = twoElements(str2);
-        } while (!recorded && (System.currentTimeMillis() - start) < 20_000);
+        } while (!recorded && (System.currentTimeMillis() - start) < 25_000);
 
 
         //TVH get
@@ -124,7 +124,7 @@ public class IntegrationTest {
         for (var req : requests) {
             recordings = mapper.readValue(req, new TypeReference<>() {
             });
-            var uniqueCount = recordings.stream().map(r -> r.getChannelId()).distinct().count();
+            var uniqueCount = recordings.stream().map(RecordedFile::getChannelId).distinct().count();
             if (uniqueCount == 2) {
                 return true;
             }
