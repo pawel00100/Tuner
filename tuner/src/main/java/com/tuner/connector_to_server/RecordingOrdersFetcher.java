@@ -74,6 +74,7 @@ public class RecordingOrdersFetcher {
             ordersFromServer = new URLBuilder(serverURL + "/orders")
                     .setParameter("id", id)
                     .build()
+                    .basicAuth("admin", "admin")
                     .GET()
                     .build(httpClient)
                     .send()
@@ -104,7 +105,8 @@ public class RecordingOrdersFetcher {
         var programName = epgProvider.getParsed().stream()
                 .filter(e -> e.getChannelUuid().equals(o.getChannelID()))
                 .filter(e -> e.getStart() == o.getStart())
-                .findAny().orElseThrow(() -> new NoSuchElementException("Failed to find corresponding event in EPG"))
+                .findAny()
+                .orElseThrow(() -> new NoSuchElementException("Failed to find corresponding event in EPG"))
                 .getTitle();  //TODO: rethink if it should be assigned here - maybe in request?
         return new RecordingOrderInternal(channelProvider.getChannel(o.getChannelID()), programName, startTime, endTime, true);
     }

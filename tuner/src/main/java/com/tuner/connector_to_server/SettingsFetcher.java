@@ -49,7 +49,7 @@ public class SettingsFetcher {
         Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "settingsFetchTrigger");
         JobDetail jobDetail = SchedulingUtils.getJobDetail("settingsFetchJob", SettingsFetchJob.class);
 
-        scheduler.scheduleJob(jobDetail, trigger);
+//        scheduler.scheduleJob(jobDetail, trigger);
 
         settingsProvider.subscribe("server.url", c -> serverURL = c);
     }

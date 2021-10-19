@@ -67,6 +67,7 @@ public class EPGSender {
             new URLBuilder(serverURL + "/epg")
                     .setParameter("id", id)
                     .build()
+                    .basicAuth("admin", "admin")
                     .post(epg)
                     .build(httpClient)
                     .send()

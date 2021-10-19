@@ -2,6 +2,7 @@ package com.tuner.model.server_requests;
 
 import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import javax.persistence.Entity;
@@ -14,7 +15,9 @@ import javax.persistence.Id;
 public class Channel {
     String id;
     String name;
+    @JsonProperty("multiplex_name")
     String multiplex;
+    @JsonProperty("multiplex_id")
     String multiplexID;
 
     @Id

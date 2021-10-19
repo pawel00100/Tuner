@@ -65,6 +65,7 @@ public class RecordListSender {
             new URLBuilder(serverURL + "/recorded")
                     .setParameter("id", id)
                     .build()
+                    .basicAuth("admin", "admin")
                     .post(recordings)
                     .build(httpClient)
                     .send()

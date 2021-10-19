@@ -61,6 +61,7 @@ public class ChannelSender {
             new URLBuilder(serverURL + "/channels")
                     .setParameter("id", id)
                     .build()
+                    .basicAuth("admin", "admin")
                     .post(channelProvider.getChannelList())
                     .build(httpClient)
                     .send()

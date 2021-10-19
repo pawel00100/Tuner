@@ -19,6 +19,7 @@ public class RecordedFile {
     @JsonIgnore
     private String filename;
 
+    @JsonProperty("channel_id")
     private String channelId;
     @JsonProperty("program_name")
     private String programName;
