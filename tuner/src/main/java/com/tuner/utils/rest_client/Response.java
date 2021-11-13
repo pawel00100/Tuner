@@ -4,7 +4,6 @@ package com.tuner.utils.rest_client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.HttpStatus;
 
 import java.net.http.HttpResponse;
 
@@ -35,10 +34,14 @@ public class Response {
     }
 
     public Response assertStatusCodeOK() throws RequestException {
-        if (httpResponse.statusCode() != HttpStatus.SC_OK) {
+        if (is2xx()) {
             throw new RequestException("Got status code: " + httpResponse.statusCode() + " response body: " + httpResponse.body());
         }
         return this;
+    }
+
+    private boolean is2xx() {
+        return (httpResponse.statusCode() / 100) != 2;
     }
 
 }

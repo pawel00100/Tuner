@@ -79,6 +79,7 @@ public class EPGSender {
         } catch (RequestException e) {
             log.error("Failed posting epg", e);
         }
+        log.debug("posted epg");
     }
 
 

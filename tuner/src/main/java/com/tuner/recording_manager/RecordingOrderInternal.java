@@ -31,6 +31,16 @@ public class RecordingOrderInternal {
         this.fromServer = fromServer;
     }
 
+    public RecordingOrderInternal(Channel channel, String programName, ZonedDateTime start, ZonedDateTime end, String id, boolean fromServer) {
+        this.channel = channel;
+        this.programName = programName;
+        this.start = start;
+        this.plannedStart = start;
+        this.end = end;
+        this.id = id;
+        this.fromServer = fromServer;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {

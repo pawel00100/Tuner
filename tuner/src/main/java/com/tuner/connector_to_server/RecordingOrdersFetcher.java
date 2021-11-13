@@ -108,7 +108,7 @@ public class RecordingOrdersFetcher {
                 .findAny()
                 .orElseThrow(() -> new NoSuchElementException("Failed to find corresponding event in EPG"))
                 .getTitle();  //TODO: rethink if it should be assigned here - maybe in request?
-        return new RecordingOrderInternal(channelProvider.getChannel(o.getChannelID()), programName, startTime, endTime, true);
+        return new RecordingOrderInternal(channelProvider.getChannel(o.getChannelID()), programName, startTime, endTime, o.getId(), true);
     }
 
     private class HeartbeatJob implements Job {

@@ -16,8 +16,11 @@ public class RecordedFile {
     @JsonIgnore
     private int id;
 
-    @JsonIgnore
+    @JsonProperty("file_name")
     private String filename;
+
+    @JsonProperty("order_id")
+    private String orderId;
 
     @JsonProperty("channel_id")
     private String channelId;
@@ -40,12 +43,13 @@ public class RecordedFile {
         this.size = size;
     }
 
-    public RecordedFile(RecordingOrderInternal order, long length, long size) {
+    public RecordedFile(RecordingOrderInternal order, long end, long length, long size) {
         this.filename = order.getFilename();
         this.channelId = order.getChannel().getId();
         this.programName = order.getProgramName();
         this.start = order.getStart().toEpochSecond();
-        this.end = order.getEnd().toEpochSecond();
+        this.end = end;
+        this.orderId = order.getId();
         this.length = length;
         this.size = size;
     }

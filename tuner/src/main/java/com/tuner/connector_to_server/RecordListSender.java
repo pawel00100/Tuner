@@ -77,7 +77,7 @@ public class RecordListSender {
         } catch (RequestException e) {
             log.error("Failed posting recorded file list", e);
         }
-
+        log.debug("posted recorded file list");
     }
 
 

@@ -73,6 +73,7 @@ public class ChannelSender {
         } catch (RequestException e) {
             log.error("Failed posting channel list", e);
         }
+        log.debug("posted channel list");
     }
 
 

@@ -129,7 +129,7 @@ public class RecorderManager {
         recorder.stop();
 
         cancelJob(rec.stop());
-        recordListProvider.registerRecording(new RecordedFile(rec.order(), recorder.recordingTimeInSeconds(), recorder.getSize()));
+        recordListProvider.registerRecording(new RecordedFile(rec.order(), System.currentTimeMillis() / 1000, recorder.recordingTimeInSeconds(), recorder.getSize()));
         startedOrders.entrySet().stream()
                 .filter(e -> e.getValue().equals(rec))
                 .findAny()
