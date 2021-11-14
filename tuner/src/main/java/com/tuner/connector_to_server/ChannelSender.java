@@ -47,7 +47,7 @@ public class ChannelSender {
         scheduler.scheduleJob(jobDetail, trigger);
     }
 
-    private void postChannels() {
+    void postChannels() {
         try {
             new URLBuilder(settingsProvider.getServerURL() + "/channels")
                     .setParameter("id", id)

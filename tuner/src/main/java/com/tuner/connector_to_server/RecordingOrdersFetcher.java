@@ -49,15 +49,7 @@ public class RecordingOrdersFetcher {
     @Autowired
     SettingsProvider settingsProvider;
 
-    @PostConstruct
-    void postConstruct() throws SchedulerException {
-        Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "recordingOrderTrigger");
-        JobDetail jobDetail = SchedulingUtils.getJobDetail("recordingOrderJob", HeartbeatJob.class);
-
-        scheduler.scheduleJob(jobDetail, trigger);
-    }
-
-    private void getOrders() {
+    public void getOrders() {
         channelProvider.getChannelList(); //TODO: temp for filling cache
 
         List<RecordingOrderExternal> ordersFromServer = null;
@@ -87,6 +79,14 @@ public class RecordingOrdersFetcher {
                 .map(this::getRecordingOrder).toList();
 
         manager.scheduleRecording(orders);
+    }
+
+    @PostConstruct
+    void postConstruct() throws SchedulerException {
+        Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "recordingOrderTrigger");
+        JobDetail jobDetail = SchedulingUtils.getJobDetail("recordingOrderJob", HeartbeatJob.class);
+
+//        scheduler.scheduleJob(jobDetail, trigger);
     }
 
     private RecordingOrderInternal getRecordingOrder(RecordingOrderExternal o) {

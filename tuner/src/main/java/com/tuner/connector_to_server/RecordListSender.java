@@ -36,15 +36,7 @@ public class RecordListSender {
     @Autowired
     SettingsProvider settingsProvider;
 
-    @PostConstruct
-    void postConstruct() throws SchedulerException {
-        Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "RecordListSenderTrigger");
-        JobDetail jobDetail = SchedulingUtils.getJobDetail("RecordListSenderJob", HeartbeatJob.class);
-
-        scheduler.scheduleJob(jobDetail, trigger);
-    }
-
-    private void postRecordList() {
+    public void postRecordList() {
         var recordings = recordListProvider.getRecordings().stream()
                 .filter(r -> r.getEnd() > System.currentTimeMillis() / 1000)
                 .toList();
@@ -71,6 +63,14 @@ public class RecordListSender {
             log.error("Failed posting recorded file list", e);
         }
         log.debug("posted recorded file list");
+    }
+
+    @PostConstruct
+    void postConstruct() throws SchedulerException {
+        Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "RecordListSenderTrigger");
+        JobDetail jobDetail = SchedulingUtils.getJobDetail("RecordListSenderJob", HeartbeatJob.class);
+
+//        scheduler.scheduleJob(jobDetail, trigger);
     }
 
 

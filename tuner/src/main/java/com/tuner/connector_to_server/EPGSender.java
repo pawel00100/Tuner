@@ -47,7 +47,7 @@ public class EPGSender {
         scheduler.scheduleJob(jobDetail, trigger);
     }
 
-    private void postEPG() {
+    public void postEPG() {
         var epg = epgProvider.getParsed();
         if (epg.isEmpty()) {
             log.debug("empty epg provided");
