@@ -28,6 +28,7 @@ public class RecordedFile {
     private String programName;
     private long start;
     @Column(name = "end_time")
+    @JsonProperty("stop")
     private long end;
     private long length;
     @JsonProperty("record_size")

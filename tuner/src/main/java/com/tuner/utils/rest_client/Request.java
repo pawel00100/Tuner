@@ -44,6 +44,12 @@ public class Request {
         return addHeader("Authorization", authHeader(user, password));
     }
 
+    public Request auth(Credentials credentials) {
+        return switch (credentials.authType) {
+            case BASIC -> basicAuth(credentials.username(), credentials.password());
+        };
+    }
+
     public HttpRequest getRequest() {
         return requestBuilder.build();
     }
@@ -61,5 +67,12 @@ public class Request {
         byte[] encodedAuth = Base64.encodeBase64(
                 auth.getBytes(StandardCharsets.ISO_8859_1));
         return "Basic " + new String(encodedAuth);
+    }
+
+    public enum AuthType {
+        BASIC
+    }
+
+    public static record Credentials(String username, String password, AuthType authType) {
     }
 }

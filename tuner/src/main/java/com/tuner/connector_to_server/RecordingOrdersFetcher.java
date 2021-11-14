@@ -2,7 +2,6 @@ package com.tuner.connector_to_server;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuner.connector_to_tvh.ChannelProvider;
 import com.tuner.connector_to_tvh.EPGProvider;
 import com.tuner.model.server_responses.RecordingOrderExternal;
@@ -33,7 +32,6 @@ import java.util.NoSuchElementException;
 @Slf4j
 public class RecordingOrdersFetcher {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
-    private static final ObjectMapper mapper = new ObjectMapper();
 
     @Value("${polling.intervalInSeconds.fast}")
     int interval;
@@ -48,10 +46,6 @@ public class RecordingOrdersFetcher {
     EPGProvider epgProvider;
     @Value("${tuner.id}")
     String id;
-    @Value("${tvheadened.url}")
-    String tvhBaseURL;
-    @Value("${server.url}")
-    String serverURL;
     @Autowired
     SettingsProvider settingsProvider;
 
@@ -61,9 +55,6 @@ public class RecordingOrdersFetcher {
         JobDetail jobDetail = SchedulingUtils.getJobDetail("recordingOrderJob", HeartbeatJob.class);
 
         scheduler.scheduleJob(jobDetail, trigger);
-
-        settingsProvider.subscribe("tvheadened.url", c -> tvhBaseURL = c);
-        settingsProvider.subscribe("server.url", c -> serverURL = c);
     }
 
     private void getOrders() {
@@ -71,10 +62,10 @@ public class RecordingOrdersFetcher {
 
         List<RecordingOrderExternal> ordersFromServer = null;
         try {
-            ordersFromServer = new URLBuilder(serverURL + "/orders")
+            ordersFromServer = new URLBuilder(settingsProvider.getServerURL() + "/orders")
                     .setParameter("id", id)
                     .build()
-                    .basicAuth("admin", "admin")
+                    .auth(settingsProvider.getServerCredentials())
                     .GET()
                     .build(httpClient)
                     .send()

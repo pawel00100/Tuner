@@ -1,7 +1,6 @@
 package com.tuner.connector_to_tvh;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.tuner.model.tvh_responses.EPGEvent;
@@ -24,15 +23,13 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class EPGProvider {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
-    private static final ObjectMapper mapper = new ObjectMapper();
     private final Cache<String, List<EPGEvent>> epgCache = createCache();
 
     @Value("${tvheadened.url}")
     private String url;
 
-    public EPGProvider(@Autowired SettingsProvider settingsProvider) {
-        settingsProvider.subscribe("tvheadened.url", c -> url = c);
-    }
+    @Autowired
+    SettingsProvider settingsProvider;
 
     public List<EPGEvent> getParsed() {
         var retrieevd = epgCache.getIfPresent("A");
@@ -50,7 +47,7 @@ public class EPGProvider {
         try {
             return new URLBuilder(url + "/api/epg/events/grid?limit=50000")
                     .build()
-                    .basicAuth("aa", "aa")
+                    .auth(settingsProvider.geTVHCredentials())
                     .GET()
                     .build(httpClient)
                     .send()
@@ -68,7 +65,7 @@ public class EPGProvider {
         try {
             return new URLBuilder(url + "/api/epg/events/grid?limit=50000")
                     .build()
-                    .basicAuth("aa", "aa")
+                    .auth(settingsProvider.geTVHCredentials())
                     .GET()
                     .build(httpClient)
                     .send()

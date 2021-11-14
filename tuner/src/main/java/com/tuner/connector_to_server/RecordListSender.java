@@ -1,7 +1,6 @@
 package com.tuner.connector_to_server;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuner.recorded_files.RecordListProvider;
 import com.tuner.settings.SettingsProvider;
 import com.tuner.utils.rest_client.RequestException;
@@ -24,7 +23,6 @@ import java.time.Duration;
 @Slf4j
 public class RecordListSender {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
-    private static final ObjectMapper mapper = new ObjectMapper();
 
     @Value("${polling.intervalInSeconds}")
     int interval = 30;
@@ -35,10 +33,6 @@ public class RecordListSender {
     RecordListProvider recordListProvider;
     @Value("${tuner.id}")
     String id;
-    @Value("${tvheadened.url}")
-    String tvhBaseURL;
-    @Value("${server.url}")
-    String serverURL;
     @Autowired
     SettingsProvider settingsProvider;
 
@@ -48,13 +42,12 @@ public class RecordListSender {
         JobDetail jobDetail = SchedulingUtils.getJobDetail("RecordListSenderJob", HeartbeatJob.class);
 
         scheduler.scheduleJob(jobDetail, trigger);
-
-        settingsProvider.subscribe("tvheadened.url", c -> tvhBaseURL = c);
-        settingsProvider.subscribe("server.url", c -> serverURL = c);
     }
 
     private void postRecordList() {
-        var recordings = recordListProvider.getRecordings();
+        var recordings = recordListProvider.getRecordings().stream()
+                .filter(r -> r.getEnd() > System.currentTimeMillis() / 1000)
+                .toList();
 
         if (recordings.isEmpty()) {
             log.debug("empty recorded file list provided");
@@ -62,10 +55,10 @@ public class RecordListSender {
         }
 
         try {
-            new URLBuilder(serverURL + "/recorded")
+            new URLBuilder(settingsProvider.getServerURL() + "/recorded")
                     .setParameter("id", id)
                     .build()
-                    .basicAuth("admin", "admin")
+                    .auth(settingsProvider.getServerCredentials())
                     .post(recordings)
                     .build(httpClient)
                     .send()

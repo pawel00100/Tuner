@@ -1,12 +1,14 @@
 [
   {
-    "channel_id": "b9fe4a8b90722d1da9fccfb45bb13419",
+    "channel_uuid": "b9fe4a8b90722d1da9fccfb45bb13419",
     "start": start1,
-    "end": end1
+    "stop": end1,
+    "order_id": 1
   },
   {
-    "channel_id": "2538c2b55f8f937dd6a8d6bfe4049d3b",
+    "channel_uuid": "2538c2b55f8f937dd6a8d6bfe4049d3b",
     "start": start1,
-    "end": end1
+    "stop": end1,
+    "order_id": 2
   }
 ]

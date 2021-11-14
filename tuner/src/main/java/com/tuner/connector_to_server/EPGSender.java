@@ -1,7 +1,6 @@
 package com.tuner.connector_to_server;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tuner.connector_to_tvh.EPGProvider;
 import com.tuner.recording_manager.RecorderManager;
 import com.tuner.settings.SettingsProvider;
@@ -25,7 +24,6 @@ import java.time.Duration;
 @Slf4j
 public class EPGSender {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
-    private static final ObjectMapper mapper = new ObjectMapper();
 
     @Value("${polling.intervalInSeconds}")
     int interval = 30;
@@ -38,10 +36,6 @@ public class EPGSender {
     EPGProvider epgProvider;
     @Value("${tuner.id}")
     String id;
-    @Value("${tvheadened.url}")
-    String tvhBaseURL;
-    @Value("${server.url}")
-    String serverURL;
     @Autowired
     SettingsProvider settingsProvider;
 
@@ -51,9 +45,6 @@ public class EPGSender {
         JobDetail jobDetail = SchedulingUtils.getJobDetail("EPGSenderJob", HeartbeatJob.class);
 
         scheduler.scheduleJob(jobDetail, trigger);
-
-        settingsProvider.subscribe("tvheadened.url", c -> tvhBaseURL = c);
-        settingsProvider.subscribe("server.url", c -> serverURL = c);
     }
 
     private void postEPG() {
@@ -64,10 +55,10 @@ public class EPGSender {
         }
 
         try {
-            new URLBuilder(serverURL + "/epg")
+            new URLBuilder(settingsProvider.getServerURL() + "/epg")
                     .setParameter("id", id)
                     .build()
-                    .basicAuth("admin", "admin")
+                    .auth(settingsProvider.getServerCredentials())
                     .post(epg)
                     .build(httpClient)
                     .send()

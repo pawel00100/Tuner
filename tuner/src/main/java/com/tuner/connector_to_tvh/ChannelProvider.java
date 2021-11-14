@@ -1,7 +1,6 @@
 package com.tuner.connector_to_tvh;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.tuner.model.server_requests.Channel;
@@ -13,7 +12,6 @@ import com.tuner.utils.rest_client.RequestException;
 import com.tuner.utils.rest_client.URLBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.net.URISyntaxException;
@@ -29,20 +27,17 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ChannelProvider {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
-    private static final ObjectMapper mapper = new ObjectMapper();
 
     private final Cache<String, List<Channel>> channelCache = createCache();
 
     @Autowired
     ChannelListDAO dao;
 
-
-    @Value("${tvheadened.url}")
-    private String url;
+    @Autowired
+    SettingsProvider settingsProvider;
 
     @Autowired
     public ChannelProvider(SettingsProvider settingsProvider) {
-        settingsProvider.subscribe("tvheadened.url", c -> url = c);
     }
 
 
@@ -87,9 +82,9 @@ public class ChannelProvider {
 
     private List<TVHService> tryGettingTVHServices() {
         try {
-            return new URLBuilder(url + "/api/mpegts/service/grid")
+            return new URLBuilder(settingsProvider.getTvhBaseURL() + "/api/mpegts/service/grid")
                     .build()
-                    .basicAuth("aa", "aa")
+                    .auth(settingsProvider.geTVHCredentials())
                     .GET()
                     .build(httpClient)
                     .send()
@@ -108,9 +103,9 @@ public class ChannelProvider {
 
     private List<TVHChannel> tryGettingTVHChannels() {
         try {
-            return new URLBuilder(url + "/api/channel/list")
+            return new URLBuilder(settingsProvider.getTvhBaseURL() + "/api/channel/list")
                     .build()
-                    .basicAuth("aa", "aa")
+                    .auth(settingsProvider.geTVHCredentials())
                     .GET()
                     .build(httpClient)
                     .send()
