@@ -92,8 +92,6 @@ public class HeartbeatSender {
         } catch (RequestException e) {
             log.error("Failed fetching heartbeat", e);
         }
-        log.debug("Got heartbeat {}", status);
-
 
         return status;
     }

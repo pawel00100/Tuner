@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -26,15 +27,20 @@ public class RecordListProvider {
     @Value("${recording.location}")
     String location;
 
+    List<Runnable> observers = new ArrayList<>();
+
     public RecordListProvider(@Autowired SettingsProvider settingsProvider) {
         settingsProvider.subscribe("tvheadened.url", c -> location = c);
-
     }
 
     public void registerRecording(RecordedFile file) {
         dao.add(file);
+        observers.forEach(Runnable::run);
     }
 
+    public void subscribe(Runnable subscriber) {
+        observers.add(subscriber);
+    }
 
     public List<RecordedFile> getRecordings() {
         if (!Files.isDirectory(Paths.get(location))) {

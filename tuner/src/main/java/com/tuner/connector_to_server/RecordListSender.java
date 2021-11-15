@@ -5,9 +5,10 @@ import com.tuner.recorded_files.RecordListProvider;
 import com.tuner.settings.SettingsProvider;
 import com.tuner.utils.rest_client.RequestException;
 import com.tuner.utils.rest_client.URLBuilder;
-import com.tuner.utils.scheduling.SchedulingUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.quartz.*;
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.quartz.Scheduler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -15,7 +16,6 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
-import java.time.Duration;
 
 
 //This is temporary until heartbeat is implemented on server
@@ -35,6 +35,11 @@ public class RecordListSender {
     String id;
     @Autowired
     SettingsProvider settingsProvider;
+
+    @PostConstruct
+    void postConstruct() {
+        recordListProvider.subscribe(this::postRecordList);
+    }
 
     public void postRecordList() {
         var recordings = recordListProvider.getRecordings().stream()
@@ -63,14 +68,6 @@ public class RecordListSender {
             log.error("Failed posting recorded file list", e);
         }
         log.debug("posted recorded file list");
-    }
-
-    @PostConstruct
-    void postConstruct() throws SchedulerException {
-        Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "RecordListSenderTrigger");
-        JobDetail jobDetail = SchedulingUtils.getJobDetail("RecordListSenderJob", HeartbeatJob.class);
-
-//        scheduler.scheduleJob(jobDetail, trigger);
     }
 
 
