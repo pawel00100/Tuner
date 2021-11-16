@@ -16,6 +16,10 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 
 //This is temporary until heartbeat is implemented on server
@@ -28,6 +32,8 @@ public class RecordListSender {
     int interval = 30;
     @Autowired
     Scheduler scheduler;
+    private static final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+
 
     @Autowired
     RecordListProvider recordListProvider;
@@ -38,12 +44,13 @@ public class RecordListSender {
 
     @PostConstruct
     void postConstruct() {
-        recordListProvider.subscribe(this::postRecordList);
+        postRecordList();
+        recordListProvider.subscribe(() -> executor.schedule(this::postRecordList, 2, TimeUnit.SECONDS));
     }
 
     public void postRecordList() {
         var recordings = recordListProvider.getRecordings().stream()
-                .filter(r -> r.getEnd() > System.currentTimeMillis() / 1000)
+                .filter(r -> r.getEnd() <= (System.currentTimeMillis() / 1000))
                 .toList();
 
         if (recordings.isEmpty()) {

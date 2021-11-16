@@ -26,6 +26,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.TimeUnit;
 
 
 @Service
@@ -87,6 +88,7 @@ public class RecordingOrdersFetcher {
         JobDetail jobDetail = SchedulingUtils.getJobDetail("recordingOrderJob", HeartbeatJob.class);
 
 //        scheduler.scheduleJob(jobDetail, trigger);
+        getOrders();
     }
 
     private RecordingOrderInternal getRecordingOrder(RecordingOrderExternal o) {
