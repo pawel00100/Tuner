@@ -1,21 +1,15 @@
 package com.tuner.model.server_requests;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
 public class HeatbeatRequest {
 
-    String id;
+    @JsonProperty("free_space")
     long freeSpace;
-    boolean isRecording;
-    int currentRecordingTime;
-    int currentRecordingSize;
 
-    public HeatbeatRequest(String id, long freeSpace, boolean isRecording, int currentRecordingTime, int currentRecordingSize) {
-        this.id = id;
+    public HeatbeatRequest(long freeSpace) {
         this.freeSpace = freeSpace;
-        this.isRecording = isRecording;
-        this.currentRecordingTime = currentRecordingTime;
-        this.currentRecordingSize = currentRecordingSize;
     }
 }

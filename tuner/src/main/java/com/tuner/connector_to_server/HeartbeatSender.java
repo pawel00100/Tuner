@@ -56,8 +56,8 @@ public class HeartbeatSender {
     }
 
     private void heartbeat() {
-        var status = new HeatbeatRequest(id, getFreeSpace(), recorder.isRecording(), recorder.recordingTimeInSeconds(), recorder.getSize());
-        HeartbeatResponse obj = sendHeartbeat();
+        var status = new HeatbeatRequest(getFreeSpace());
+        HeartbeatResponse obj = sendHeartbeat(status);
         if (obj.isNeedEPG()) {
             confirmReceived("post_epg");
             epgSender.postEPG();
@@ -72,11 +72,12 @@ public class HeartbeatSender {
         }
     }
 
-    private HeartbeatResponse sendHeartbeat() {
-        HeartbeatResponse status = null;
+    private HeartbeatResponse sendHeartbeat(HeatbeatRequest status) {
+        HeartbeatResponse response = null;
         try {
-            status = new URLBuilder(settingsProvider.getServerURL() + "/heartbeat")
+            response = new URLBuilder(settingsProvider.getServerURL() + "/heartbeat")
                     .setParameter("id", id)
+                    .setParameter("free_space", String.valueOf(status.getFreeSpace()))
                     .build()
                     .auth(settingsProvider.getServerCredentials())
                     .GET()
@@ -88,12 +89,12 @@ public class HeartbeatSender {
         } catch (URISyntaxException e) {
             log.error("Failed building URI", e);
         } catch (JsonProcessingException e) {
-            log.error("Failed mapping heartbeat received from server", e);
+            log.error("Failed mapping heartbeat request or response", e);
         } catch (RequestException e) {
             log.error("Failed fetching heartbeat", e);
         }
 
-        return status;
+        return response;
     }
 
     private void confirmReceived(String updated) {
@@ -116,7 +117,7 @@ public class HeartbeatSender {
     }
 
     private long getFreeSpace() {
-        return currentDir.getFreeSpace() / 1000000;
+        return currentDir.getFreeSpace();
     }
 
 
