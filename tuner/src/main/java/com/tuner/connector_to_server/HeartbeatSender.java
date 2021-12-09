@@ -26,7 +26,8 @@ import java.time.Duration;
 @Slf4j
 public class HeartbeatSender {
     private static final HttpClient httpClient = HttpClient.newHttpClient();
-    private static final File currentDir = new File(".");
+    @Value("${recording.location}")
+    String location;
     private static final HeartbeatResponse readHeartbeat = new HeartbeatResponse(false, false, false, false);
     @Autowired
     Scheduler scheduler;
@@ -44,11 +45,14 @@ public class HeartbeatSender {
     String id;
     @Value("${heartbeat.intervalInSeconds}")
     int interval;
+    private File currentDir;
     @Autowired
     SettingsProvider settingsProvider;
 
     @PostConstruct
     void postConstruct() throws SchedulerException {
+        currentDir = new File(location);
+
         Trigger trigger = SchedulingUtils.getScheduledTrigger(Duration.ofSeconds(interval), "heartbeatTrigger");
         JobDetail jobDetail = SchedulingUtils.getJobDetail("heartbeatJob", HeartbeatJob.class);
 
