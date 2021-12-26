@@ -44,4 +44,8 @@ public class Channel {
     public String getName() {
         return name;
     }
+
+    public boolean isHD() {
+        return name.contains("HD");
+    }
 }

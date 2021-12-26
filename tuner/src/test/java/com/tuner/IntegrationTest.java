@@ -41,8 +41,6 @@ public class IntegrationTest {
 
     @BeforeAll
     public static void run() throws IOException {
-        System.out.println("dupa");
-
         long timestamp = System.currentTimeMillis() / 1000;
 
         //TVH get
@@ -84,7 +82,7 @@ public class IntegrationTest {
     }
 
     @Test
-    public void dupa() throws IOException, InterruptedException {
+    public void test() throws IOException, InterruptedException {
         deleteRecordingsDirectory();
 
         var start = System.currentTimeMillis();

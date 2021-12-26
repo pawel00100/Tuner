@@ -4,6 +4,7 @@ import com.google.common.collect.Range;
 import com.tuner.model.server_requests.Channel;
 import com.tuner.model.server_requests.RecordedFile;
 import com.tuner.recorded_files.RecordListProvider;
+import com.tuner.recorder.Converter;
 import com.tuner.recorder.Recorder;
 import com.tuner.utils.scheduling.JobAndTrigger;
 import com.tuner.utils.scheduling.SchedulingUtils;
@@ -30,14 +31,16 @@ public class RecorderManager {
     private final TreeMap<String, Recording> startedOrders = new TreeMap<>(); //TODO: BiMap?
     private final RecordListProvider recordListProvider;
     private final Scheduler scheduler;
+    private final Converter converter;
     private final ApplicationContext applicationContext;
     private final Object obj = new Object();
 
     @Autowired
-    public RecorderManager(ApplicationContext applicationContext, RecordListProvider recordListProvider, Scheduler scheduler) {
+    public RecorderManager(ApplicationContext applicationContext, RecordListProvider recordListProvider, Scheduler scheduler, Converter converter) {
         this.applicationContext = applicationContext;
         this.recordListProvider = recordListProvider;
         this.scheduler = scheduler;
+        this.converter = converter;
     }
 
     public void scheduleRecording(List<RecordingOrderInternal> newOrders) {
@@ -129,7 +132,9 @@ public class RecorderManager {
         recorder.stop();
 
         cancelJob(rec.stop());
-        recordListProvider.registerRecording(new RecordedFile(rec.order(), System.currentTimeMillis() / 1000, recorder.recordingTimeInSeconds(), recorder.getSize()));
+        var recordedFile = new RecordedFile(rec.order(), System.currentTimeMillis() / 1000, recorder.recordingTimeInSeconds(), recorder.getSize());
+        recordListProvider.registerRecording(recordedFile);
+        converter.convert(recordedFile);
         startedOrders.entrySet().stream()
                 .filter(e -> e.getValue().equals(rec))
                 .findAny()

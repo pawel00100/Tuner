@@ -3,6 +3,7 @@ package com.tuner.recording_manager;
 import com.tuner.connector_to_tvh.ChannelProvider;
 import com.tuner.model.server_requests.Channel;
 import com.tuner.recorded_files.RecordListProvider;
+import com.tuner.recorder.Converter;
 import com.tuner.recorder.MockRecorder;
 import com.tuner.recorder.Recorder;
 import com.tuner.settings.SettingsProvider;
@@ -35,12 +36,13 @@ class RecorderManagerTest {
     RecordListProvider recordListProvider = mock(RecordListProvider.class);
     Scheduler scheduler = mock(Scheduler.class);
     ChannelProvider channelProvider = spy(new ChannelProvider(mock(SettingsProvider.class)));
+    Converter converter = mock(Converter.class);
 
     private RecorderManager recorderManagerSpied;
 
     @BeforeEach
     void beforeAll() {
-        RecorderManager recorderManager = new RecorderManager(applicationContext, recordListProvider, scheduler);
+        RecorderManager recorderManager = new RecorderManager(applicationContext, recordListProvider, scheduler, converter);
         recorderManagerSpied = spy(recorderManager);
 
         List<Channel> channels = Arrays.asList(

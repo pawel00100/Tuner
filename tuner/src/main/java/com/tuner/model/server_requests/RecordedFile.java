@@ -33,20 +33,14 @@ public class RecordedFile {
     private long length;
     @JsonProperty("record_size")
     private long size;
+    @Transient
+    private Channel channel;
 
-    public RecordedFile(String filename, String channelId, String programName, long start, long end, long length, long size) {
-        this.filename = filename;
-        this.channelId = channelId;
-        this.programName = programName;
-        this.start = start;
-        this.end = end;
-        this.length = length;
-        this.size = size;
-    }
 
     public RecordedFile(RecordingOrderInternal order, long end, long length, long size) {
         this.filename = order.getFilename();
         this.channelId = order.getChannel().getId();
+        this.channel = order.getChannel();
         this.programName = order.getProgramName();
         this.start = order.getStart().toEpochSecond();
         this.end = end;
