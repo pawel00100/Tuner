@@ -1,14 +1,43 @@
+##Run locally
 
-## Endpoints
+Adjust application.properties, then:
 
-Short description of all REST API endpoints user for development.
-| resource                                                           | type | description                                                          | object structure                              |
-|--------------------------------------------------------------------|------|----------------------------------------------------------------------|-----------------------------------------------|
-| `/api/check`                                                       | get  | adds user                                                            |                                               |
-| `/api/recorder/record/channel/{channel}`                           | post | starts recording now (by default for 3 hours)                        |                                               |
-| `/api/recorder/record/channel/{channel}/seconds/{time}`            | post | starst recording now for given time in seconds                       |                                               |
-| `/api/recorder/record/channel/{channel}/after/{after}/time/{time}` | post | schedules recording for given time after period (both in seconds)    |                                               |
-| `/api/recorder/record/channel/{channel}/start/{start}/end/{end}`   | post | schedules recording from epoch second timestamp to another timestamp |                                               |
-| `/api/recorder/stop`                                               | post | forces stop of current recording                                     |                                               |
-| `/api/channel/list`                                                | get  | returns available channels                                           | [Channel list](/misc/exampleChannelList.json) |
-| `/api/epg`                                                         | get  | returns epg                                                          | [EPG list](/misc/exampleEPGlList.json)        |
+```
+mvn install
+java -jar .\target\tuner-<version>.jar
+```
+
+##Docker image creation and deployment
+
+Create jar
+
+```
+mvn install
+```
+
+Create docker image in tuner directory. For x86 platform does not needed to be specified, other platforms may need adjustment.
+
+```
+docker build --platform=linux/arm/v7 --tag=<tag> .
+```
+
+Run docker image. After image tag you can add flags overriding properties file.
+
+```
+docker run -d \
+-p <dev api port>:8080 -p <debug port>:5005 \
+-v <directory for recorded files>:/opt/recordings \
+--name <image name> <tag>  \
+--server.url=http://<server ip>:<server port> \
+--tvheadened.url=http://<tvh ip>:<tvh port> \
+--recording.location=/opt/recordings
+```
+
+Optional flags for converting recordings.
+
+```
+--converter.enabled=true \
+--converter.converted.location=<directory for recorded files> \
+--converter.ffmpeg.exec=ffmpeg \
+--converter.codec.video=libx264 \
+```
